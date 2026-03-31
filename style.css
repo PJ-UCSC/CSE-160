@@ -1,0 +1,131 @@
+body {
+    color:burlywood;
+    background:rgb(48, 47, 45);
+}
+
+h1 {
+    color:rgb(128, 87, 34);
+    text-align: center;
+}
+
+p {
+    color:burlywood;
+}
+
+button {
+    background-color: burlywood;
+    color: rgb(128, 87, 34);
+    border: 1cm;
+    text-align: center;
+    margin-left: 30px;
+    margin-right: 30px;
+}
+
+button:hover {
+    background-color: rgb(128, 87, 34);
+    color: burlywood;
+}
+
+h2 {
+    color: rgb(128, 87, 34);
+    text-align: center;
+}
+
+h3 {
+    color: rgb(128, 87, 34);
+    text-align: left;
+}
+
+h4 {
+    color: rgb(128, 87, 34);
+    text-align: left;
+}
+
+#body {
+    text-align: center;
+}
+
+#resumeBody {
+    padding-left: 80px;
+    padding-right: 80px;
+}
+
+#projectBody {
+    padding-left: 80px;
+    padding-right: 80px;
+}
+
+#getResume {
+    background-color: burlywood;
+    color: rgb(128, 87, 34);
+    border: 50px color(srgb 128 87 34);
+    border-radius: 12px;
+    width: 175px;
+    height: 25px;
+    font-size: medium;
+}
+
+#getResume:hover {
+  background-color: rgb(128, 87, 34);
+  color: burlywood;
+}
+
+#resumeButton {
+  text-align: center;
+}
+
+#homeResumeButton {
+  background-color: rgb(116, 116, 116);
+  color: rgb(48, 47, 45);
+  border: 50px color(srgb 128 87 34);
+  border-radius: 12px;
+  width: 175px;
+  height: 25px;
+  font-size: medium;
+}
+
+#homeResumeButton:hover {
+    background-color: rgb(184, 184, 184);
+    color: rgb(34, 34, 34);
+}
+
+#homeResume {
+    text-align: center;
+}
+
+#Header {
+    background-color: burlywood;
+    text-align: center;
+}
+
+#icon {
+    width: 20px;
+    height: 20px;
+}
+
+::-moz-selection { /* Code for Firefox */
+    color: burlywood;
+    background: rgb(128, 87, 34);
+  }
+  
+  ::selection {
+    color: burlywood;
+    background: rgb(128, 87, 34);
+  }
+
+  a:link {
+    color: rgb(128, 87, 34);
+    text-decoration: underline;
+  }
+  a:visited {
+    color: rgb(252, 143, 0);
+    text-decoration: underline;
+  }
+  a:hover {
+    color: rgb(128, 87, 34);
+    text-decoration: underline;
+  }
+  a:active {
+    color: burlywood;
+    text-decoration: underline;
+  }
