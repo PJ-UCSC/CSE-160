@@ -46,8 +46,8 @@ function handleDrawEvent() {
   var v2_off_center = new Vector3([x2_offset, -y2_offset, 0]);			// v2 on WebGl's grid
 
   // Draw the original vectors
-  drawLine(canvas, 'red', v1);
-  drawLine(canvas, 'blue', v2);
+  drawVector(v1, 'red');
+  drawVector(v2, 'blue');
 
   // Get scalar value from user
   let scalar = parseFloat(document.getElementById('scalar').value);
@@ -58,14 +58,14 @@ function handleDrawEvent() {
         var v3 = new Vector3([0, 0, 0]);
         v3.set(v1);
         v3.add(v2_off_center);
-        drawLine(canvas, 'green', v3);
+        drawVector(v3, 'green');
         break;
 
       case 'sub':
         var v3 = new Vector3([0, 0, 0]);
         v3.set(v1);
         v3.sub(v2_off_center);
-        drawLine(canvas, 'green', v3);
+        drawVector(v3, 'green');
         break;
 
       case 'mul':
@@ -77,12 +77,12 @@ function handleDrawEvent() {
         v3.set(v1_off_center);
         v3.mul(scalar);
         v3.add(vCenter);
-        drawLine(canvas, 'green', v3);
+        drawVector(v3, 'green');
 
         v3.set(v2_off_center);
         v3.mul(scalar);
         v3.add(vCenter);
-        drawLine(canvas, 'green', v3);
+        drawVector(v3, 'green');
         break;
 
       case 'div':
@@ -98,18 +98,21 @@ function handleDrawEvent() {
         v3.set(v1_off_center);
         v3.div(scalar);
         v3.add(vCenter);
-        drawLine(canvas, 'green', v3);
+        drawVector(v3, 'green');
 
         v3.set(v2_off_center);
         v3.div(scalar);
         v3.add(vCenter);
-        drawLine(canvas, 'green', v3);
+        drawVector(v3, 'green');
         break;
     }
   }
 }
 
-function drawLine(canvas, color, vec) {
+function drawVector(vec, color) {
+  var canvas = document.getElementById('canvas');
+  var ctx = canvas.getContext('2d');
+
   let center_x = canvas.width / 2;
   let center_y = canvas.height / 2;
   var ctx = canvas.getContext('2d');
