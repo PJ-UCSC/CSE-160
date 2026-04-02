@@ -47,6 +47,13 @@ class Vector3 {
         // Insert your code here.
         // This function should change this vector (this.elements) and not create a new vector.
 
+        let s = other.elements;
+        let d = this.elements;
+
+        for (let i = 0; i < 3; ++i) {
+          d[i] += s[i];
+        }
+
         // Don't delete the return statement.
         return this;
     };
@@ -58,6 +65,13 @@ class Vector3 {
     sub(other) {
         // Insert your code here.
         // This function should change this vector (this.elements) and not create a new vector.
+
+        let s = other.elements;
+        let d = this.elements;
+
+        for (let i = 0; i < 3; ++i) {
+          d[i] -= s[i];
+        }
 
         // Don't delete the return statement.
         return this;
@@ -71,6 +85,12 @@ class Vector3 {
         // Insert your code here.
         // This function should change this vector (this.elements) and not create a new vector.
 
+        let d = this.elements;
+
+        for (let i = 0; i < 3; ++i) {
+          d[i] /= scalar;
+        }
+
         // Don't delete the return statement.
         return this;
     };
@@ -83,17 +103,25 @@ class Vector3 {
         // Insert your code here.
         // This function should change this vector (this.elements) and not create a new vector.
 
+        let d = this.elements;
+
+        for (let i = 0; i < 3; ++i) {
+          d[i] *= scalar;
+        }
+
         // Don't delete the return statement.
         return this;
     };
 
     /**
-      * Calcualte the dop product between this vector and other.
+      * Calcualte the dot product between this vector and other.
       * @return scalar
       */
     static dot(other1, other2) {
         // Insert your code here.
         let d = 0; // Modify this line to calculate this vector's magnitude.
+
+        //d = magnitude(other1) * magnitude(other2) * 
 
         // Don't delete the return statement.
         return d;
@@ -119,6 +147,8 @@ class Vector3 {
     magnitude() {
         // Insert your code here.
         let m = 0; // Modify this line to calculate this vector's magnitude.
+
+        //m = Math.sqrt( () )
 
         // Don't delete the return statement.
         return m;

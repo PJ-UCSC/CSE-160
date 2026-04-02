@@ -1,4 +1,8 @@
-// DrawTriangle.js (c) 2012 matsuda
+/*
+  Author: Pranav Jha
+  CruzID: 1973394
+*/
+
 function main() {  
   // Retrieve <canvas> element
   var canvas = document.getElementById('canvas');  
@@ -13,85 +17,107 @@ function main() {
   // Draw a black rectangle
   ctx.fillStyle = 'rgba(0, 0, 0, 1.0)';                   // Set color to black
   ctx.fillRect(0, 0, canvas.width, canvas.height);        // Fill a rectangle with the color
-
-  handleDrawEvent();
 }
 
 function handleDrawEvent() {
+  // Get the center of the canvas
   let center_x = canvas.width / 2;
   let center_y = canvas.height / 2;
   var ctx = canvas.getContext('2d');
 
+  // Reset upon new function call
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+  // Get the location given by the user and multiply by 20
   let x1_offset = parseFloat(document.getElementById('x1-coord').value) * 20;
   let y1_offset = parseFloat(document.getElementById('y1-coord').value) * 20;
-
   let x2_offset = parseFloat(document.getElementById('x2-coord').value) * 20;
   let y2_offset = parseFloat(document.getElementById('y2-coord').value) * 20;
 
+  // Get what operation to perform - (add, subtract, multiply, divide)
   let operation = document.getElementById('operation').value;
 
-  ctx.beginPath();
-  ctx.strokeStyle = 'red';
-  ctx.moveTo(center_x, center_y);
-  ctx.lineTo(center_x + x1_offset, center_y - y1_offset);
-  ctx.stroke();
+  // Make vectors
+  var vCenter = new Vector3([center_x, center_y, 0]);				// Center of Canvas
+  var v1 = new Vector3([center_x + x1_offset, center_y - y1_offset, 0]);	// v1 centered on the Canvas
+  var v2 = new Vector3([center_x + x2_offset, center_y - y2_offset, 0]);	// v2 centered on the Canvas
+  var v1_off_center = new Vector3([x1_offset, -y1_offset, 0]);			// v1 on WebGL's grid
+  var v2_off_center = new Vector3([x2_offset, -y2_offset, 0]);			// v2 on WebGl's grid
 
-  ctx.beginPath();
-  ctx.strokeStyle = 'blue';
-  ctx.moveTo(center_x, center_y);
-  ctx.lineTo(center_x + x2_offset, center_y - y2_offset);
-  ctx.stroke();
+  // Draw the original vectors
+  drawLine(canvas, 'red', v1);
+  drawLine(canvas, 'blue', v2);
+
+  // Get scalar value from user
+  let scalar = parseFloat(document.getElementById('scalar').value);
 
   if (operation != 'none') {
-    if (operation == 'add') {
-      ctx.beginPath();
-      ctx.strokeStyle = 'green';
-      ctx.moveTo(center_x, center_y);
-      ctx.lineTo(center_x + (x1_offset + x2_offset), center_y - (y1_offset + y2_offset));
-      ctx.stroke();
-    } else if (operation == 'sub') {
-      ctx.beginPath();
-      ctx.strokeStyle = 'green';
-      ctx.moveTo(center_x, center_y);
-      ctx.lineTo(center_x + (x1_offset - x2_offset), center_y - (y1_offset - y2_offset));
-      ctx.stroke();
-    } else if ((operation == 'mul' || operation == 'div') && document.getElementById('scalar').value != "") {
-      console.log('Multiplication or Division Operation');
-      let scalar = parseFloat(document.getElementById('scalar').value);
-      if (operation == 'mul') {
-        ctx.beginPath();
-        ctx.strokeStyle = 'green';
-        ctx.moveTo(center_x, center_y);
-        ctx.lineTo(center_x + x1_offset*scalar, center_y - y1_offset*scalar);
-        ctx.stroke();
+    switch (operation) {
+      case 'add':
+        var v3 = new Vector3([0, 0, 0]);
+        v3.set(v1);
+        v3.add(v2_off_center);
+        drawLine(canvas, 'green', v3);
+        break;
 
-        ctx.beginPath();
-        ctx.strokeStyle = 'green';
-        ctx.moveTo(center_x, center_y);
-        ctx.lineTo(center_x + x2_offset*scalar, center_y - y2_offset*scalar);
-        ctx.stroke();
-      } else if (operation == 'div') {
-        if (scalar == 0) {
-          alert("Error: Please enter a non-zero scalar value if you want to perform division");
+      case 'sub':
+        var v3 = new Vector3([0, 0, 0]);
+        v3.set(v1);
+        v3.sub(v2_off_center);
+        drawLine(canvas, 'green', v3);
+        break;
+
+      case 'mul':
+        if (isNaN(scalar)) {
+          alert("Error: Please enter a scalar value if you want to perform multiplication");
           return;
         }
-        ctx.beginPath();
-        ctx.strokeStyle = 'green';
-        ctx.moveTo(center_x, center_y);
-        ctx.lineTo(center_x + x1_offset/scalar, center_y - y1_offset/scalar);
-        ctx.stroke();
+        var v3 = new Vector3([0, 0, 0]);
+        v3.set(v1_off_center);
+        v3.mul(scalar);
+        v3.add(vCenter);
+        drawLine(canvas, 'green', v3);
 
-        ctx.beginPath();
-        ctx.strokeStyle = 'green';
-        ctx.moveTo(center_x, center_y);
-        ctx.lineTo(center_x + x2_offset/scalar, center_y - y2_offset/scalar);
-        ctx.stroke();
-      }
-    } else if ((operation == 'mul' || operation == 'div') && document.getElementById('scalar').value == "") {
-      alert("Error: Please enter a scalar value if you want to perform multiplication or division");
+        v3.set(v2_off_center);
+        v3.mul(scalar);
+        v3.add(vCenter);
+        drawLine(canvas, 'green', v3);
+        break;
+
+      case 'div':
+        if (isNaN(scalar)) {
+          alert("Error: Please enter a scalar value if you want to perform division");
+          return;
+        }
+        if (scalar === 0) {
+          alert("Error: Can't divide by 0");
+          return;
+        }
+        var v3 = new Vector3([0, 0, 0]);
+        v3.set(v1_off_center);
+        v3.div(scalar);
+        v3.add(vCenter);
+        drawLine(canvas, 'green', v3);
+
+        v3.set(v2_off_center);
+        v3.div(scalar);
+        v3.add(vCenter);
+        drawLine(canvas, 'green', v3);
+        break;
     }
   }
+}
+
+function drawLine(canvas, color, vec) {
+  let center_x = canvas.width / 2;
+  let center_y = canvas.height / 2;
+  var ctx = canvas.getContext('2d');
+
+  ctx.beginPath();
+  ctx.strokeStyle = color;
+  ctx.moveTo(center_x, center_y);
+  let v = vec.elements;
+  ctx.lineTo(v[0], v[1]);
+  ctx.stroke();
 }
