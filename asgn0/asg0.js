@@ -23,9 +23,14 @@ function handleDrawEvent() {
   var ctx = canvas.getContext('2d');
 
   ctx.strokeStyle = 'red';
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  let x_offset = parseFloat(document.getElementById('x-coord').value);
+  let y_offset = parseFloat(document.getElementById('y-coord').value);
 
   ctx.beginPath();
   ctx.moveTo(center_x, center_y);
-  ctx.lineTo(center_x + 75, center_y + 50);
+  ctx.lineTo(center_x + x_offset, center_y + y_offset);
   ctx.stroke();
 }
