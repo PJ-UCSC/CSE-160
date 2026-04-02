@@ -45,6 +45,10 @@ function handleDrawEvent() {
   var v1_off_center = new Vector3([x1_offset, -y1_offset, 0]);			// v1 on WebGL's grid
   var v2_off_center = new Vector3([x2_offset, -y2_offset, 0]);			// v2 on WebGl's grid
 
+  // Needed to calculate area
+  var v1_unscaled = new Vector3([x1_offset/20, -y1_offset/20, 0]);		// v1 without scaling
+  var v2_unscaled = new Vector3([x2_offset/20, -y2_offset/20, 0]);		// v2 without scaling
+
   // Draw the original vectors
   drawVector(v1, 'red');
   drawVector(v2, 'blue');
@@ -105,8 +109,47 @@ function handleDrawEvent() {
         v3.add(vCenter);
         drawVector(v3, 'green');
         break;
+
+      case 'mag':
+        console.log("Magnitude v1: %d", v1_unscaled.magnitude());
+        console.log("Magnitude v2: %d", v2_unscaled.magnitude());
+        break;
+
+      case 'norm':
+        var v3 = new Vector3([0, 0, 0]);
+        v3.set(v1_off_center);
+        v3.normalize();
+        v3.mul(20);
+        v3.add(vCenter);
+        drawVector(v3, 'green');
+
+        v3.set(v2_off_center);
+        v3.normalize();
+        v3.mul(20);
+        v3.add(vCenter);
+        drawVector(v3, 'green');
+        break;
+
+      case 'angle':
+        angleBetween(v1_off_center, v2_off_center);
+        break;
+
+      case 'area':
+        areaTriangle(v1_unscaled, v2_unscaled);
+        break;
     }
   }
+}
+
+function angleBetween(v1, v2) {
+  var alpha = (Vector3.dot(v1, v2)) / (v1.magnitude() * v2.magnitude());
+  var angle = Math.acos(alpha) * (180 / Math.PI);
+  console.log(angle);
+}
+
+function areaTriangle(v1, v2) {
+  var vec = Vector3.cross(v1, v2);
+  console.log(vec.magnitude() / 2);
 }
 
 function drawVector(vec, color) {
