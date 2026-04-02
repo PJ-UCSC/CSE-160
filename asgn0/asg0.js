@@ -22,15 +22,24 @@ function handleDrawEvent() {
   let center_y = canvas.height / 2;
   var ctx = canvas.getContext('2d');
 
-  ctx.strokeStyle = 'red';
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  let x_offset = parseFloat(document.getElementById('x-coord').value);
-  let y_offset = parseFloat(document.getElementById('y-coord').value);
+  let x1_offset = parseFloat(document.getElementById('x1-coord').value);
+  let y1_offset = parseFloat(document.getElementById('y1-coord').value);
+
+  let x2_offset = parseFloat(document.getElementById('x2-coord').value);
+  let y2_offset = parseFloat(document.getElementById('y2-coord').value);
 
   ctx.beginPath();
+  ctx.strokeStyle = 'red';
   ctx.moveTo(center_x, center_y);
-  ctx.lineTo(center_x + x_offset, center_y + y_offset);
+  ctx.lineTo(center_x + x1_offset, center_y + y1_offset);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.strokeStyle = 'blue';
+  ctx.moveTo(center_x, center_y);
+  ctx.lineTo(center_x + x2_offset, center_y + y2_offset);
   ctx.stroke();
 }
