@@ -12,7 +12,20 @@
 
     <p>V1 X:<input type="text" id="x1-coord"></input> Y:<input type="text" id="y1-coord"></input></p>
     <p>V2 X:<input type="text" id="x2-coord"></input> Y:<input type="text" id="y2-coord"></input></p>
+
+    <p> Operation:
+      <select id="operation" name="operation">
+        <option value="none"></option>
+        <option value="add">Add</option>
+        <option value="sub">Subtract</option>
+        <option value="mul">Multiply</option>
+        <option value="div">Divide</option>
+      </select>
+      Scalar: <input type="text" id="scalar"></input>
+    </p>
+
     <button type="Draw" onclick="handleDrawEvent()">Draw</button>
+
     <script src="asg0.js"></script>
     <script src="lib/cuon-matrix-cse160.js"></script>
   </body>
