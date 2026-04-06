@@ -111,8 +111,8 @@ function handleDrawEvent() {
         break;
 
       case 'mag':
-        console.log("Magnitude v1: %d", v1_unscaled.magnitude());
-        console.log("Magnitude v2: %d", v2_unscaled.magnitude());
+        console.log("Magnitude v1:", v1_unscaled.magnitude());
+        console.log("Magnitude v2:", v2_unscaled.magnitude());
         break;
 
       case 'norm':
@@ -144,12 +144,12 @@ function handleDrawEvent() {
 function angleBetween(v1, v2) {
   var alpha = (Vector3.dot(v1, v2)) / (v1.magnitude() * v2.magnitude());
   var angle = Math.acos(alpha) * (180 / Math.PI);
-  console.log("Angle: %f", angle);
+  console.log("Angle:", angle);
 }
 
 function areaTriangle(v1, v2) {
   var vec = Vector3.cross(v1, v2);
-  console.log("Area of the triangle: %f", (vec.magnitude()/2));
+  console.log("Area of the triangle:", vec.magnitude() / 2);
 }
 
 function drawVector(vec, color) {
