@@ -144,12 +144,12 @@ function handleDrawEvent() {
 function angleBetween(v1, v2) {
   var alpha = (Vector3.dot(v1, v2)) / (v1.magnitude() * v2.magnitude());
   var angle = Math.acos(alpha) * (180 / Math.PI);
-  console.log("Angle: %d", angle);
+  console.log("Angle: %f", angle);
 }
 
 function areaTriangle(v1, v2) {
   var vec = Vector3.cross(v1, v2);
-  console.log("Area of the triangle: %d", (vec.magnitude()/2));
+  console.log("Area of the triangle: %f", (vec.magnitude()/2));
 }
 
 function drawVector(vec, color) {
