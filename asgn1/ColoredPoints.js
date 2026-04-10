@@ -30,64 +30,127 @@ function setupWebGL() {
 }
 
 function connectVariablesToGLSL(gl) {
-  // Initialize shaders
   if (!initShaders(gl, VSHADER_SOURCE, FSHADER_SOURCE)) {
     console.error('Failed to intialize shaders.');
     throw { err: 'Failed to intialize shaders.' };
   }
 
-  // Get the storage location of u_FragColor
-  var u_FragColor = gl.getUniformLocation(gl.program, 'u_FragColor');
-  if (!u_FragColor) {
-    console.error('Failed to get the storage location of u_FragColor');
-    throw { err: 'Failed to get the storage location of u_FragColor' };
+  // Get the storage location of attribute variable 'pos'
+  var a_Position = gl.getAttribLocation(gl.program, 'pos');
+  if (a_Position < 0) {
+    console.error('Failed to get the storage location of pos');
+    throw { err: 'Failed to get the storage location of pos' };
   }
 
-  return { u_FragColor };
+  // Get the storage location of u_FragColor
+  var u_FragColor = gl.getUniformLocation(gl.program, 'u_FragColor');
+  
+  // Create a buffer object to reuse for all shapes
+  var vertexBuffer = gl.createBuffer();
+  if (!vertexBuffer) {
+    console.error('Failed to create the buffer object');
+    return null;
+  }
+
+  return { u_FragColor, a_Position, vertexBuffer };
 }
 
 function renderAllShapes(gl, shader_vars) {
+gl.clear(gl.COLOR_BUFFER_BIT);
 
-  // Clear <canvas>
-  gl.clear(gl.COLOR_BUFFER_BIT);
-
-  const squareVerticies = new Float32Array([
-    0.5, 0.5,
-    -0.5, 0.5,
-    -0.5, -0.5,
-    0.5, -0.5
-  ]);
-
-  const triangleVerticies = new Float32Array([
-    0, 0.5,
-    -0.5, -0.5,
-    0.5, -0.5
-  ]);
-
-  // loop over the shapes array and render each shape
   for (const shape of g_shapes) {
-    switch(shape.drawing_state.drawing_mode) {
-      case 'triangle':
-        break;
+    const { x, y, drawing_state } = shape;
+    const { color, drawing_size, drawing_mode } = drawing_state;
+
+    // 1. Pass the color to the fragment shader
+    // (Note: slider values 0-100 converted to 0.0-1.0)
+    gl.uniform4f(shader_vars.u_FragColor, color.red/100, color.green/100, color.blue/100, 1.0);
+
+    // 2. Calculate size scaling (normalize pixels/units to WebGL -1 to 1)
+    const d = drawing_size / 200.0; 
+
+    let vertices;
+    let drawMode;
+    let n;
+
+    switch(drawing_mode) {
       case 'square':
+        // Create 4 points for a square (using TRIANGLE_FAN)
+        vertices = new Float32Array([
+          x - d, y + d,  // Top Left
+          x - d, y - d,  // Bottom Left
+          x + d, y - d,  // Bottom Right
+          x + d, y + d   // Top Right
+        ]);
+        drawMode = gl.TRIANGLE_FAN;
+        n = 4;
+        break;
+      case 'triangle':
+        // Create 3 points for a triangle
+        vertices = new Float32Array([
+          x, y + d,          // Top
+          x - d, y - d,      // Bottom Left
+          x + d, y - d       // Bottom Right
+        ]);
+        drawMode = gl.TRIANGLES;
+        n = 3;
         break;
       case 'circle':
+        drawMode = gl.TRIANGLE_FAN;
+        const segs = parseInt(segments);
+        // Array size: (Center point + perimeter points + closing point) * 2 coordinates
+        vertices = new Float32Array((segs + 2) * 2);
+        
+        // Center of the circle
+        vertices[0] = x;
+        vertices[1] = y;
+
+        // Perimeter points
+        for (let i = 0; i <= segs; i++) {
+          let angle = (i * 2 * Math.PI) / segs;
+          let px = x + Math.cos(angle) * d;
+          let py = y + Math.sin(angle) * d;
+          
+          vertices[(i + 1) * 2] = px;
+          vertices[(i + 1) * 2 + 1] = py;
+        }
+        n = segs + 2;
         break;
       default:
+        break;
     }
+
+    // 3. Bind buffer and pass vertex data
+    gl.bindBuffer(gl.ARRAY_BUFFER, shader_vars.vertexBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.DYNAMIC_DRAW);
+
+    // 4. Assign the buffer to the 'pos' attribute and enable it
+    gl.vertexAttribPointer(shader_vars.a_Position, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(shader_vars.a_Position);
+
+    // 5. Draw the shape
+    gl.drawArrays(drawMode, 0, n);
   }
 }
 
 function click(ev, gl, canvas, shader_vars, drawing_state) {
-        
-  var x = ev.clientX; // x coordinate of a mouse pointer
-  var y = ev.clientY; // y coordinate of a mouse pointer
+  var x = ev.clientX;
+  var y = ev.clientY;
   var rect = ev.target.getBoundingClientRect();
 
   x = ((x - rect.left) - canvas.width / 2) / (canvas.width / 2);
   y = (canvas.height / 2 - (y - rect.top)) / (canvas.height / 2);
 
-  const newShape = {x, y, drawing_state};
+  // Use Spread operator (...) to create a shallow copy of the state
+  // This "freezes" the color and size for this specific shape
+  const stateCopy = { 
+    drawing_mode: drawing_state.drawing_mode,
+    drawing_size: drawing_state.drawing_size,
+    color: { ...drawing_state.color },
+    segments: drawing_state.segments
+  };
+
+  const newShape = { x, y, drawing_state: stateCopy };
   g_shapes.push(newShape);
 
   renderAllShapes(gl, shader_vars);
@@ -126,9 +189,7 @@ function main() {
   }
 
   square_btn.addEventListener('click', selectSquareMode);
-
   triangle_btn.addEventListener('click', selectTriangleMode);
-
   circle_btn.addEventListener('click', selectCircleMode);
 
   selectSquareMode();
@@ -147,6 +208,26 @@ function main() {
   blue_slider.addEventListener("input", function() {
     color.blue = this.value;
   });
+
+  const size_slider = document.getElementById('Shape Size'); // Ensure this ID exists in HTML
+  size_slider.addEventListener("input", function() {
+      drawing_size = this.value;
+  });
+
+  const seg_slider = document.getElementById('Segment Size'); 
+  if (seg_slider) {
+    seg_slider.addEventListener("input", function() {
+      segments = this.value;
+    });
+  }
+
+  const clear_btn = document.getElementById('Clear');
+  if (clear_btn) {
+    clear_btn.addEventListener('click', () => {
+      g_shapes.length = 0; // Empty the array
+      renderAllShapes(gl, shader_vars);
+    });
+  }
 
   try {
     // Get the rendering context for WebGL
