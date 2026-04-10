@@ -3,6 +3,18 @@
   <head>
     <meta charset="utf-8" />
     <title>Assignment 0</title>
+    <style>
+      .btn {
+        background-color: #3498db;
+        border-bottom: 5px solid #2980b9;
+        transition: all 0.1s;
+      }
+      .selected {
+        transform: translateY(1px);
+        border-bottom-width: 3px;
+        background-color: #2980b9;
+      }
+    </style>
   </head>
 
   <body onload="main()">
@@ -11,14 +23,14 @@
     </canvas>
 
     <br></br>
-    <button type="Clear">Clear Canvas</button>
+    <button id="Clear">Clear Canvas</button>
 
     <p>Drawing Mode</p>
 
     <p>
-      <button id="Squares">Squares</button>
-      <button id="Triangles">Triangles</button>
-      <button id="Circles">Circles</button>
+      <button id="Squares" class="btn">Squares</button>
+      <button id="Triangles" class="btn">Triangles</button>
+      <button id="Circles" class="btn">Circles</button>
     </p>
 
     <p>Shape Color:</p>
@@ -38,6 +50,7 @@
         Segment Size: <input type="range" min="0" max="255" value="0" class="slider" id="Segment Size">
       </div>
     </p>
+    <div id="diagnostics" ></div>
 
     <script src="lib/cuon-matrix.js"></script>
     <script src="lib/cuon-utils.js"></script>

@@ -144,11 +144,15 @@ function connectVariablesToGLSL(gl) {
 }
 
 function renderAllShapes(gl, shader_vars) {
+  // diagnotics for testing ---------------------------------------------------
+  const diagnoticsDiv = document.getElementById("diagnostics");
+  diagnoticsDiv.innerText = JSON.stringify({g_selectedShape, g_isDrawing, g_shapes})
+  // end diagnotics for testing -----------------------------------------------
   gl.clear(gl.COLOR_BUFFER_BIT);
 
   for (const shape of g_shapes) {
     const { x, y, drawing_state } = shape;
-    const { color, drawing_size, drawing_mode } = drawing_state;
+    const { color, drawing_size, drawing_mode, segments } = drawing_state;
 
     // 1. Pass the color to the fragment shader
     // (Note: slider values 0-100 converted to 0.0-1.0)
@@ -185,24 +189,19 @@ function renderAllShapes(gl, shader_vars) {
         break;
       case 'circle':
         drawMode = gl.TRIANGLE_FAN;
-        const segs = parseInt(segments);
         // Array size: (Center point + perimeter points + closing point) * 2 coordinates
-        vertices = new Float32Array((segs + 2) * 2);
-        
-        // Center of the circle
-        vertices[0] = x;
-        vertices[1] = y;
+        const coords = []; 
 
         // Perimeter points
-        for (let i = 0; i <= segs; i++) {
-          let angle = (i * 2 * Math.PI) / segs;
+        for (let i = 0; i <= segments; i++) {
+          let angle = (i * 2 * Math.PI) / segments;
           let px = x + Math.cos(angle) * d;
           let py = y + Math.sin(angle) * d;
           
-          vertices[(i + 1) * 2] = px;
-          vertices[(i + 1) * 2 + 1] = py;
+          coords.push(px, py);
         }
-        n = segs + 2;
+        vertices = new Float32Array(coords);
+        n = segments 
         break;
       default:
         break;
@@ -221,7 +220,7 @@ function renderAllShapes(gl, shader_vars) {
   }
 }
 
-function click(ev, gl, canvas, shader_vars, drawing_state) {
+function clickx(ev, gl, canvas, shader_vars, drawing_state) {
   var x = ev.clientX;
   var y = ev.clientY;
   var rect = ev.target.getBoundingClientRect();
@@ -248,7 +247,7 @@ function main() {
 
   let drawing_mode = "";
   let drawing_size = 20;
-  let color = {red: 0, green: 0, blue: 0};
+  let color = {red: 25, green: 25, blue: 25};
   let segments = 5;
 
   const square_btn = document.getElementById('Squares');
@@ -283,16 +282,19 @@ function main() {
   selectSquareMode();
 
   const red_slider = document.getElementById('Red');
+  red_slider.value = color.red;
   red_slider.addEventListener("input", function() {
     color.red = this.value;
   });
 
   const green_slider = document.getElementById('Green');
+  green_slider.value = color.green;
   green_slider.addEventListener("input", function() {
     color.green = this.value;
   });
 
   const blue_slider = document.getElementById('Blue');
+  blue_slider.value = color.blue;
   blue_slider.addEventListener("input", function() {
     color.blue = this.value;
   });
@@ -306,14 +308,6 @@ function main() {
   if (seg_slider) {
     seg_slider.addEventListener("input", function() {
       segments = this.value;
-    });
-  }
-
-  const clear_btn = document.getElementById('Clear');
-  if (clear_btn) {
-    clear_btn.addEventListener('click', () => {
-      g_shapes.length = 0; // Empty the array
-      renderAllShapes(gl, shader_vars);
     });
   }
 
@@ -343,6 +337,12 @@ function main() {
     // 3. When mouse is released, stop drawing
     window.addEventListener('mouseup', () => {
       g_isDrawing = false;
+    });
+
+    const clear_btn = document.getElementById('Clear');
+    clear_btn.addEventListener('click', () => {
+      g_shapes.length = 0; // Empty the array
+      renderAllShapes(gl, shader_vars);
     });
 
     // Specify the color for clearing <canvas>
