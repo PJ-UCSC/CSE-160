@@ -17,6 +17,94 @@ var FSHADER_SOURCE =`
 `;
 
 const g_shapes = [];;  // The array to store the shapes
+let g_selectedShape = null;
+let g_isDrawing = false;
+
+function convertEventToCoords(ev, canvas) {
+  var x = ev.clientX;
+  var y = ev.clientY;
+  var rect = ev.target.getBoundingClientRect();
+
+  x = ((x - rect.left) - canvas.width / 2) / (canvas.width / 2);
+  y = (canvas.height / 2 - (y - rect.top)) / (canvas.height / 2);
+  return [x, y];
+}
+
+function handleMouseDown(ev, gl, canvas, shader_vars, drawing_state) {
+  const [x, y] = convertEventToCoords(ev, canvas);
+
+  // 1. Check if we clicked on an existing shape (Picking)
+  // We iterate backwards to pick the one on "top"
+  for (let i = g_shapes.length - 1; i >= 0; i--) {
+    const s = g_shapes[i];
+    const d = s.drawing_state.drawing_size / 200.0; // hit area half-width
+    
+    // Simple AABB (Axis Aligned Bounding Box) check
+    if (x > s.x - d && x < s.x + d && y > s.y - d && y < s.y + d) {
+      g_selectedShape = s;
+      return; // Exit, we found a shape to drag
+    }
+  }
+
+  // 2. If no shape was clicked, create a new one (your old logic)
+  const stateCopy = { 
+    drawing_mode: drawing_state.drawing_mode,
+    drawing_size: drawing_state.drawing_size,
+    color: { ...drawing_state.color },
+    segments: drawing_state.segments
+  };
+
+  const newShape = { x, y, drawing_state: stateCopy };
+  g_shapes.push(newShape);
+  g_selectedShape = newShape; // Drag the new shape immediately
+
+  renderAllShapes(gl, shader_vars);
+}
+
+function handleMouseMove(ev, gl, canvas, shader_vars) {
+  if (g_selectedShape) {
+    const [x, y] = convertEventToCoords(ev, canvas);
+    
+    // Update the position of the selected shape
+    g_selectedShape.x = x;
+    g_selectedShape.y = y;
+
+    // Redraw the scene
+    renderAllShapes(gl, shader_vars);
+  }
+}
+
+function handleMouseUp() {
+  g_selectedShape = null;
+}
+
+function addShapeAtMouse(ev, gl, canvas, shader_vars, drawing_state) {
+  const [x, y] = convertEventToCoords(ev, canvas);
+
+  // Snapshot the current settings
+  const stateCopy = { 
+    drawing_mode: drawing_state.drawing_mode,
+    drawing_size: drawing_state.drawing_size,
+    color: { ...drawing_state.color },
+    segments: drawing_state.segments
+  };
+
+  const newShape = { x, y, drawing_state: stateCopy };
+  g_shapes.push(newShape);
+
+  // Redraw everything
+  renderAllShapes(gl, shader_vars);
+}
+
+// Helper to convert mouse coordinates
+function convertEventToCoords(ev, canvas) {
+  var x = ev.clientX;
+  var y = ev.clientY;
+  var rect = ev.target.getBoundingClientRect();
+  x = ((x - rect.left) - canvas.width / 2) / (canvas.width / 2);
+  y = (canvas.height / 2 - (y - rect.top)) / (canvas.height / 2);
+  return [x, y];
+}
 
 function setupWebGL() {
   // Retrieve <canvas> element
@@ -56,7 +144,7 @@ function connectVariablesToGLSL(gl) {
 }
 
 function renderAllShapes(gl, shader_vars) {
-gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.clear(gl.COLOR_BUFFER_BIT);
 
   for (const shape of g_shapes) {
     const { x, y, drawing_state } = shape;
@@ -239,11 +327,23 @@ function main() {
 
     const shader_vars = connectVariablesToGLSL(gl);
 
-    // Register function (event handler) to be called on a mouse press
-    canvas.addEventListener('mousedown', (ev) => click(ev, gl, canvas,
-      shader_vars,
-      { drawing_mode, drawing_size, color, segments },
-    ));
+    // 1. When mouse is pressed, start drawing and place the first "dot"
+    canvas.addEventListener('mousedown', (ev) => {
+      g_isDrawing = true;
+      addShapeAtMouse(ev, gl, canvas, shader_vars, { drawing_mode, drawing_size, color, segments });
+    });
+
+    // 2. When mouse moves, if we are drawing, keep adding shapes
+    canvas.addEventListener('mousemove', (ev) => {
+      if (g_isDrawing) {
+        addShapeAtMouse(ev, gl, canvas, shader_vars, { drawing_mode, drawing_size, color, segments });
+      }
+    });
+
+    // 3. When mouse is released, stop drawing
+    window.addEventListener('mouseup', () => {
+      g_isDrawing = false;
+    });
 
     // Specify the color for clearing <canvas>
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
