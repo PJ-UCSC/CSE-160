@@ -297,7 +297,7 @@ function main() {
     color.blue = this.value;
   });
 
-  const size_slider = document.getElementById('Shape Size'); // Ensure this ID exists in HTML
+  const size_slider = document.getElementById('Shape Size');
   size_slider.addEventListener("input", function() {
       drawing_size = this.value;
   });
