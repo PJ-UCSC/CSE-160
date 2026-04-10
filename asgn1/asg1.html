@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Assignment 0</title>
+  </head>
+
+  <body onload="main()">
+    <canvas id="canvas" width="400" height="400">
+      Please use a browser that supports "canvas"
+    </canvas>
+
+    <button type="Clear">Clear Canvas</button>
+
+    <p>Drawing Mode</p>
+
+    <p>
+      <button id="Squares">Squares</button>
+      <button id="Triangles">Triangles</button>
+      <button id="Circles">Circles</button>
+    </p>
+
+    <p>Shape Color:</p>
+
+    <p>
+      <div class="ColorSliders">
+        Red:
+        <input type="range" min="0" max="255" value="50" class="slider" steps="1" id="Red">
+        Green:
+        <input type="range" min="0" max="255" value="50" class="slider" id="Green">
+        Blue:
+        <input type="range" min="0" max="255" value="50" class="slider" id="Blue">
+      </div>
+
+      <div class="shapeSliders">
+        Shape Size: <input type="range" min="0" max="255" value="50" class="slider" id="Shape Size"> (Circles)
+        Segment Size: <input type="range" min="0" max="255" value="50" class="slider" id="Segment Size">
+      </div>
+    </p>
+
+    <script src="lib/cuon-matrix.js"></script>
+    <script src="lib/cuon-utils.js"></script>
+    <script src="lib/webgl-utils.js"></script>
+    <script src="lib/webgl-debug.js"></script>
+    <script src="ColoredPoints.js"></script>
+    <!-- <script src="lib/cuon-matrix-cse160.js"></script> -->
+  </body>
+</html>
