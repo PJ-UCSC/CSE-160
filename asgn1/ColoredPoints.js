@@ -1,256 +1,67 @@
-// ColoredPoint.js (c) 2012 matsuda
+// ColoredPoint.js
 // Vertex shader program
 var VSHADER_SOURCE =`
-  attribute vec2 pos;
+  attribute vec4 pos;
+  uniform mat4 u_ModelMatrix;
   void main(void) {
-    gl_Position = vec4(pos, 0, 1);
+    gl_Position = u_ModelMatrix * pos;
   }
 `;
 
 // Fragment shader program
 var FSHADER_SOURCE =`
   precision mediump float;
-  uniform vec4 u_FragColor;  // uniform変数
+  uniform vec4 u_FragColor;
   void main() {
     gl_FragColor = u_FragColor;
   }
 `;
 
-const g_shapes = [];;  // The array to store the shapes
-let g_selectedShape = null;
+// --- GLOBAL VARIABLES ---
+const g_shapes = [];
 let g_isDrawing = false;
 let g_backgroundColor = [0.0, 0.0, 0.0, 1.0];
 
-function convertEventToCoords(ev, canvas) {
-  var x = ev.clientX;
-  var y = ev.clientY;
-  var rect = ev.target.getBoundingClientRect();
-
-  x = ((x - rect.left) - canvas.width / 2) / (canvas.width / 2);
-  y = (canvas.height / 2 - (y - rect.top)) / (canvas.height / 2);
-  return [x, y];
-}
-
-function handleMouseDown(ev, gl, canvas, shader_vars, drawing_state) {
-  const [x, y] = convertEventToCoords(ev, canvas);
-
-  // 1. Check if we clicked on an existing shape (Picking)
-  // We iterate backwards to pick the one on "top"
-  for (let i = g_shapes.length - 1; i >= 0; i--) {
-    const s = g_shapes[i];
-    const d = s.drawing_state.drawing_size / 200.0; // hit area half-width
-    
-    // Simple AABB (Axis Aligned Bounding Box) check
-    if (x > s.x - d && x < s.x + d && y > s.y - d && y < s.y + d) {
-      g_selectedShape = s;
-      return; // Exit, we found a shape to drag
-    }
-  }
-
-  // 2. If no shape was clicked, create a new one (your old logic)
-  const stateCopy = { 
-    drawing_mode: drawing_state.drawing_mode,
-    drawing_size: drawing_state.drawing_size,
-    color: { ...drawing_state.color },
-    segments: drawing_state.segments
-  };
-
-  const newShape = { x, y, drawing_state: stateCopy };
-  g_shapes.push(newShape);
-  g_selectedShape = newShape; // Drag the new shape immediately
-
-  renderAllShapes(gl, shader_vars);
-}
-
-function handleMouseMove(ev, gl, canvas, shader_vars) {
-  if (g_selectedShape) {
-    const [x, y] = convertEventToCoords(ev, canvas);
-    
-    // Update the position of the selected shape
-    g_selectedShape.x = x;
-    g_selectedShape.y = y;
-
-    // Redraw the scene
-    renderAllShapes(gl, shader_vars);
-  }
-}
-
-function handleMouseUp() {
-  g_selectedShape = null;
-}
-
-function addShapeAtMouse(ev, gl, canvas, shader_vars, drawing_state) {
-  const [x, y] = convertEventToCoords(ev, canvas);
-
-  // Snapshot the current settings
-  const stateCopy = { 
-    drawing_mode: drawing_state.drawing_mode,
-    drawing_size: drawing_state.drawing_size,
-    color: { ...drawing_state.color },
-    segments: drawing_state.segments
-  };
-
-  const newShape = { x, y, drawing_state: stateCopy };
-  g_shapes.push(newShape);
-
-  // Redraw everything
-  renderAllShapes(gl, shader_vars);
-}
-
-// Helper to convert mouse coordinates
-function convertEventToCoords(ev, canvas) {
-  var x = ev.clientX;
-  var y = ev.clientY;
-  var rect = ev.target.getBoundingClientRect();
-  x = ((x - rect.left) - canvas.width / 2) / (canvas.width / 2);
-  y = (canvas.height / 2 - (y - rect.top)) / (canvas.height / 2);
-  return [x, y];
-}
+// Global Brush Settings (so main and click handlers can share them)
+let g_selectedType = "square";
+let g_selectedSize = 20;
+let g_selectedColor = {red: 25, green: 25, blue: 25};
+let g_selectedSegments = 10;
+let g_selectedRotation = 0;
 
 function setupWebGL() {
-  // Retrieve <canvas> element
   const canvas = document.getElementById('canvas');
-
-  //const opt_attribs = {};
-  //const opt_onError = () => console.log("error");
-
   const gl = WebGLUtils.setupWebGL(canvas);
   return { canvas, gl };
 }
 
 function connectVariablesToGLSL(gl) {
+  // 1. Initialize shaders FIRST
   if (!initShaders(gl, VSHADER_SOURCE, FSHADER_SOURCE)) {
     console.error('Failed to intialize shaders.');
-    throw { err: 'Failed to intialize shaders.' };
-  }
-
-  // Get the storage location of attribute variable 'pos'
-  var a_Position = gl.getAttribLocation(gl.program, 'pos');
-  if (a_Position < 0) {
-    console.error('Failed to get the storage location of pos');
-    throw { err: 'Failed to get the storage location of pos' };
-  }
-
-  // Get the storage location of u_FragColor
-  var u_FragColor = gl.getUniformLocation(gl.program, 'u_FragColor');
-  
-  // Create a buffer object to reuse for all shapes
-  var vertexBuffer = gl.createBuffer();
-  if (!vertexBuffer) {
-    console.error('Failed to create the buffer object');
     return null;
   }
 
-  return { u_FragColor, a_Position, vertexBuffer };
+  // 2. NOW get the storage locations
+  var a_Position = gl.getAttribLocation(gl.program, 'pos');
+  var u_FragColor = gl.getUniformLocation(gl.program, 'u_FragColor');
+  var u_ModelMatrix = gl.getUniformLocation(gl.program, 'u_ModelMatrix');
+  
+  var vertexBuffer = gl.createBuffer();
+  
+  return { u_FragColor, a_Position, vertexBuffer, u_ModelMatrix };
 }
 
-function renderAllShapes(gl, shader_vars) {
-  /*
-  // diagnotics for testing ---------------------------------------------------
-  const diagnoticsDiv = document.getElementById("diagnostics");
-  diagnoticsDiv.innerText = JSON.stringify({g_selectedShape, g_isDrawing, g_shapes})
-  // end diagnotics for testing -----------------------------------------------
-  */
+function addShapeAtMouse(ev, gl, canvas, shader_vars) {
+  const [x, y] = convertEventToCoords(ev, canvas);
 
-  gl.clearColor(g_backgroundColor[0], g_backgroundColor[1], g_backgroundColor[2], g_backgroundColor[3]);
-  gl.clear(gl.COLOR_BUFFER_BIT);
-
-  for (const shape of g_shapes) {
-    const { x, y, drawing_state } = shape;
-    const { color, drawing_size, drawing_mode, segments } = drawing_state;
-
-    // 1. Pass the color to the fragment shader
-    // (Note: slider values 0-100 converted to 0.0-1.0)
-    gl.uniform4f(shader_vars.u_FragColor, color.red/100, color.green/100, color.blue/100, 1.0);
-
-    // 2. Calculate size scaling (normalize pixels/units to WebGL -1 to 1)
-    const d = drawing_size / 200.0; 
-
-    let vertices;
-    let drawMode;
-    let n;
-
-    switch(drawing_mode) {
-      case 'square':
-        // Create 4 points for a square (using TRIANGLE_FAN)
-        vertices = new Float32Array([
-          x - d, y + d,  // Top Left
-          x - d, y - d,  // Bottom Left
-          x + d, y - d,  // Bottom Right
-          x + d, y + d   // Top Right
-        ]);
-        drawMode = gl.TRIANGLE_FAN;
-        n = 4;
-        break;
-      case 'triangle':
-        // Create 3 points for a triangle
-        vertices = new Float32Array([
-          x, y + d,          // Top
-          x - d, y - d,      // Bottom Left
-          x + d, y - d       // Bottom Right
-        ]);
-        drawMode = gl.TRIANGLES;
-        n = 3;
-        break;
-      case 'circle':
-        drawMode = gl.TRIANGLE_FAN;
-        const coords = []; 
-
-        // 1. PUSH THE CENTER POINT FIRST
-        // This is the "hub" that all triangles will connect to.
-        coords.push(x, y);
-
-        // 2. Ensure segments is a number (safety check)
-        let segCount = parseInt(segments);
-
-        // 3. Loop to add perimeter points
-        // We use <= so that the circle "closes" back at the start
-        for (let i = 0; i <= segCount; i++) {
-          let angle = (i * 2 * Math.PI) / segCount;
-          let px = x + Math.cos(angle) * d;
-          let py = y + Math.sin(angle) * d;
-          
-          coords.push(px, py);
-        }
-
-        vertices = new Float32Array(coords);
-        
-        // 4. Update 'n'
-        // n = 1 (center) + (segCount + 1) (perimeter points)
-        n = segCount + 2; 
-        break;
-      default:
-        break;
-    }
-
-    // 3. Bind buffer and pass vertex data
-    gl.bindBuffer(gl.ARRAY_BUFFER, shader_vars.vertexBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.DYNAMIC_DRAW);
-
-    // 4. Assign the buffer to the 'pos' attribute and enable it
-    gl.vertexAttribPointer(shader_vars.a_Position, 2, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(shader_vars.a_Position);
-
-    // 5. Draw the shape
-    gl.drawArrays(drawMode, 0, n);
-  }
-}
-
-function clickx(ev, gl, canvas, shader_vars, drawing_state) {
-  var x = ev.clientX;
-  var y = ev.clientY;
-  var rect = ev.target.getBoundingClientRect();
-
-  x = ((x - rect.left) - canvas.width / 2) / (canvas.width / 2);
-  y = (canvas.height / 2 - (y - rect.top)) / (canvas.height / 2);
-
-  // Use Spread operator (...) to create a shallow copy of the state
-  // This "freezes" the color and size for this specific shape
+  // Snapshot the current settings into the shape's own state
   const stateCopy = { 
-    drawing_mode: drawing_state.drawing_mode,
-    drawing_size: drawing_state.drawing_size,
-    color: { ...drawing_state.color },
-    segments: drawing_state.segments
+    drawing_mode: g_selectedType,
+    drawing_size: g_selectedSize,
+    color: { ...g_selectedColor },
+    segments: g_selectedSegments,
+    rotation: g_selectedRotation 
   };
 
   const newShape = { x, y, drawing_state: stateCopy };
@@ -259,131 +70,130 @@ function clickx(ev, gl, canvas, shader_vars, drawing_state) {
   renderAllShapes(gl, shader_vars);
 }
 
+function convertEventToCoords(ev, canvas) {
+  var x = ev.clientX;
+  var y = ev.clientY;
+  var rect = ev.target.getBoundingClientRect();
+  x = ((x - rect.left) - canvas.width / 2) / (canvas.width / 2);
+  y = (canvas.height / 2 - (y - rect.top)) / (canvas.height / 2);
+  return [x, y];
+}
+
+function renderAllShapes(gl, shader_vars) {
+  // Set background and clear
+  gl.clearColor(g_backgroundColor[0], g_backgroundColor[1], g_backgroundColor[2], g_backgroundColor[3]);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  var modelMatrix = new Matrix4();
+
+  for (const shape of g_shapes) {
+    const { x, y, drawing_state } = shape;
+    const { color, drawing_size, drawing_mode, segments, rotation } = drawing_state;
+
+    // Pass Color (0-255 converted to 0.0-1.0)
+    gl.uniform4f(shader_vars.u_FragColor, color.red/255, color.green/255, color.blue/255, 1.0);
+
+    const d = drawing_size / 200.0;
+
+    // --- MATRIX MATH ---
+    // Rule: We define the shape at (0,0), then Translate to mouse, then Rotate
+    modelMatrix.setTranslate(x, y, 0); 
+    modelMatrix.rotate(rotation, 0, 0, 1);
+    gl.uniformMatrix4fv(shader_vars.u_ModelMatrix, false, modelMatrix.elements);
+
+    let vertices;
+    let n;
+    let drawMode = gl.TRIANGLE_FAN;
+
+    // --- YOUR SWITCH STATEMENT ---
+    switch(drawing_mode) {
+      case 'square':
+        vertices = new Float32Array([
+          -d,  d,   // Top Left
+          -d, -d,   // Bottom Left
+           d, -d,   // Bottom Right
+           d,  d    // Top Right
+        ]);
+        n = 4;
+        break;
+      case 'triangle':
+        vertices = new Float32Array([
+           0,  d,   // Top
+          -d, -d,   // Bottom Left
+           d, -d    // Bottom Right
+        ]);
+        n = 3;
+        drawMode = gl.TRIANGLES;
+        break;
+      case 'circle':
+        const coords = [0, 0]; // Center point at (0,0)
+        for (let i = 0; i <= segments; i++) {
+          let angle = (i * 2 * Math.PI) / segments;
+          coords.push(Math.cos(angle) * d, Math.sin(angle) * d);
+        }
+        vertices = new Float32Array(coords);
+        n = segments + 2;
+        break;
+      default:
+        break;
+    }
+
+    // Bind buffer and Draw
+    gl.bindBuffer(gl.ARRAY_BUFFER, shader_vars.vertexBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.DYNAMIC_DRAW);
+    gl.vertexAttribPointer(shader_vars.a_Position, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(shader_vars.a_Position);
+    gl.drawArrays(drawMode, 0, n);
+  }
+}
+
 function main() {
+  const { canvas, gl } = setupWebGL();
+  const shader_vars = connectVariablesToGLSL(gl);
 
-  let drawing_mode = "";
-  let drawing_size = 20;
-  let color = {red: 25, green: 25, blue: 25};
-  let segments = 5;
-
+  // Buttons Logic
   const square_btn = document.getElementById('Squares');
   const triangle_btn = document.getElementById('Triangles');
   const circle_btn = document.getElementById('Circles');
   
-  function selectSquareMode() {
-    drawing_mode = "square";
-    circle_btn.classList.remove("selected");
-    square_btn.classList.add("selected");
-    triangle_btn.classList.remove("selected");
+  function updateUI() {
+    [square_btn, triangle_btn, circle_btn].forEach(b => b.classList.remove('selected'));
+    if(g_selectedType === "square") square_btn.classList.add('selected');
+    if(g_selectedType === "triangle") triangle_btn.classList.add('selected');
+    if(g_selectedType === "circle") circle_btn.classList.add('selected');
   }
 
-  function selectTriangleMode() {
-    drawing_mode = "triangle";
-    circle_btn.classList.remove("selected");
-    square_btn.classList.remove("selected");
-    triangle_btn.classList.add("selected");
-  }
+  square_btn.onclick = () => { g_selectedType = "square"; updateUI(); };
+  triangle_btn.onclick = () => { g_selectedType = "triangle"; updateUI(); };
+  circle_btn.onclick = () => { g_selectedType = "circle"; updateUI(); };
+  updateUI();
 
-  function selectCircleMode() {
-    drawing_mode = "circle";
-    circle_btn.classList.add("selected");
-    square_btn.classList.remove("selected");
-    triangle_btn.classList.remove("selected");
-  }
-
-  square_btn.addEventListener('click', selectSquareMode);
-  triangle_btn.addEventListener('click', selectTriangleMode);
-  circle_btn.addEventListener('click', selectCircleMode);
-
-  selectSquareMode();
-
-  const red_slider = document.getElementById('Red');
-  red_slider.value = color.red;
-  red_slider.addEventListener("input", function() {
-    color.red = this.value;
+  // Slider Listeners
+  document.getElementById('Red').oninput = function() { g_selectedColor.red = this.value; };
+  document.getElementById('Green').oninput = function() { g_selectedColor.green = this.value; };
+  document.getElementById('Blue').oninput = function() { g_selectedColor.blue = this.value; };
+  document.getElementById('Shape Size').oninput = function() { g_selectedSize = this.value; };
+  document.getElementById('Segment Size').oninput = function() { g_selectedSegments = parseInt(this.value); };
+  
+  // Special rotation data
+  const rotation_slider = document.getElementById('Rotation');
+  const rotation_display = document.getElementById('RotationDegree');
+  rotation_slider.addEventListener('input', function() {
+    g_selectedRotation = this.value; // This is a value from 0-360
+    rotation_display.innerText = this.value + "°"; // Update the visual label
   });
 
-  const green_slider = document.getElementById('Green');
-  green_slider.value = color.green;
-  green_slider.addEventListener("input", function() {
-    color.green = this.value;
-  });
+  // Background Slider Listeners
+  document.getElementById('BGRed').oninput = function() { g_backgroundColor[0] = this.value/255; renderAllShapes(gl, shader_vars); };
+  document.getElementById('BGGreen').oninput = function() { g_backgroundColor[1] = this.value/255; renderAllShapes(gl, shader_vars); };
+  document.getElementById('BGBlue').oninput = function() { g_backgroundColor[2] = this.value/255; renderAllShapes(gl, shader_vars); };
 
-  const blue_slider = document.getElementById('Blue');
-  blue_slider.value = color.blue;
-  blue_slider.addEventListener("input", function() {
-    color.blue = this.value;
-  });
+  // Mouse Handlers
+  canvas.onmousedown = (ev) => { g_isDrawing = true; addShapeAtMouse(ev, gl, canvas, shader_vars); };
+  canvas.onmousemove = (ev) => { if (g_isDrawing) addShapeAtMouse(ev, gl, canvas, shader_vars); };
+  window.onmouseup = () => { g_isDrawing = false; };
 
-  const size_slider = document.getElementById('Shape Size');
-  size_slider.addEventListener("input", function() {
-      drawing_size = this.value;
-  });
+  document.getElementById('Clear').onclick = () => { g_shapes.length = 0; renderAllShapes(gl, shader_vars); };
 
-  const seg_slider = document.getElementById('Segment Size'); 
-  if (seg_slider) {
-    seg_slider.addEventListener("input", function() {
-      segments = parseInt(this.value); // Convert string to number
-    });
-  }
-
-  // Background Red Slider
-  document.getElementById('BGRed').addEventListener('input', function() {
-    g_backgroundColor[0] = this.value / 255; // Convert 0-255 to 0.0-1.0
-    renderAllShapes(gl, shader_vars);       // Redraw immediately
-  });
-
-  // Background Green Slider
-  document.getElementById('BGGreen').addEventListener('input', function() {
-    g_backgroundColor[1] = this.value / 255;
-    renderAllShapes(gl, shader_vars);
-  });
-
-  // Background Blue Slider
-  document.getElementById('BGBlue').addEventListener('input', function() {
-    g_backgroundColor[2] = this.value / 255;
-    renderAllShapes(gl, shader_vars);
-  });
-
-  try {
-    // Get the rendering context for WebGL
-    const { canvas, gl } = setupWebGL();
-    if (!gl) {
-      console.error('Failed to get the rendering context for WebGL');
-      return;
-    }
-
-    const shader_vars = connectVariablesToGLSL(gl);
-
-    // 1. When mouse is pressed, start drawing and place the first "dot"
-    canvas.addEventListener('mousedown', (ev) => {
-      g_isDrawing = true;
-      addShapeAtMouse(ev, gl, canvas, shader_vars, { drawing_mode, drawing_size, color, segments });
-    });
-
-    // 2. When mouse moves, if we are drawing, keep adding shapes
-    canvas.addEventListener('mousemove', (ev) => {
-      if (g_isDrawing) {
-        addShapeAtMouse(ev, gl, canvas, shader_vars, { drawing_mode, drawing_size, color, segments });
-      }
-    });
-
-    // 3. When mouse is released, stop drawing
-    window.addEventListener('mouseup', () => {
-      g_isDrawing = false;
-    });
-
-    const clear_btn = document.getElementById('Clear');
-    clear_btn.addEventListener('click', () => {
-      g_shapes.length = 0; // Empty the array
-      renderAllShapes(gl, shader_vars);
-    });
-
-    // Specify the color for clearing <canvas>
-    gl.clearColor(0.0, 0.0, 0.0, 1.0);
-
-    renderAllShapes(gl, shader_vars);
-  } catch (error) { 
-    console.error('Could not run due to error', {error})
-  }
+  renderAllShapes(gl, shader_vars);
 }
