@@ -52,7 +52,7 @@ function connectVariablesToGLSL(gl) {
   return { u_FragColor, a_Position, vertexBuffer, u_ModelMatrix };
 }
 
-function addShapeAtMouse(ev, gl, canvas, shader_vars) {
+function click(ev, gl, canvas, shader_vars) {
   const [x, y] = convertEventToCoords(ev, canvas);
 
   // Snapshot the current settings into the shape's own state
@@ -189,8 +189,8 @@ function main() {
   document.getElementById('BGBlue').oninput = function() { g_backgroundColor[2] = this.value/255; renderAllShapes(gl, shader_vars); };
 
   // Mouse Handlers
-  canvas.onmousedown = (ev) => { g_isDrawing = true; addShapeAtMouse(ev, gl, canvas, shader_vars); };
-  canvas.onmousemove = (ev) => { if (g_isDrawing) addShapeAtMouse(ev, gl, canvas, shader_vars); };
+  canvas.onmousedown = (ev) => { g_isDrawing = true; click(ev, gl, canvas, shader_vars); };
+  canvas.onmousemove = (ev) => { if (g_isDrawing) click(ev, gl, canvas, shader_vars); };
   window.onmouseup = () => { g_isDrawing = false; };
 
   document.getElementById('Clear').onclick = () => { g_shapes.length = 0; renderAllShapes(gl, shader_vars); };
