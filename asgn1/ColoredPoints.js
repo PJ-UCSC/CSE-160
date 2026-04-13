@@ -19,6 +19,7 @@ var FSHADER_SOURCE =`
 const g_shapes = [];;  // The array to store the shapes
 let g_selectedShape = null;
 let g_isDrawing = false;
+let g_backgroundColor = [0.0, 0.0, 0.0, 1.0];
 
 function convertEventToCoords(ev, canvas) {
   var x = ev.clientX;
@@ -150,6 +151,8 @@ function renderAllShapes(gl, shader_vars) {
   diagnoticsDiv.innerText = JSON.stringify({g_selectedShape, g_isDrawing, g_shapes})
   // end diagnotics for testing -----------------------------------------------
   */
+
+  gl.clearColor(g_backgroundColor[0], g_backgroundColor[1], g_backgroundColor[2], g_backgroundColor[3]);
   gl.clear(gl.COLOR_BUFFER_BIT);
 
   for (const shape of g_shapes) {
@@ -193,23 +196,28 @@ function renderAllShapes(gl, shader_vars) {
         drawMode = gl.TRIANGLE_FAN;
         const coords = []; 
 
-        // 1. Add the CENTER point of the circle first (this is the "hub" of the fan)
+        // 1. PUSH THE CENTER POINT FIRST
+        // This is the "hub" that all triangles will connect to.
         coords.push(x, y);
 
-        // 2. Loop to add perimeter points
-        // We go up to <= segments so that the last point overlaps the first point, closing the circle
-        for (let i = 0; i <= segments; i++) {
-          let angle = (i * 2 * Math.PI) / segments;
+        // 2. Ensure segments is a number (safety check)
+        let segCount = parseInt(segments);
+
+        // 3. Loop to add perimeter points
+        // We use <= so that the circle "closes" back at the start
+        for (let i = 0; i <= segCount; i++) {
+          let angle = (i * 2 * Math.PI) / segCount;
           let px = x + Math.cos(angle) * d;
           let py = y + Math.sin(angle) * d;
           
           coords.push(px, py);
         }
+
         vertices = new Float32Array(coords);
         
-        // 3. Update 'n'
-        // We added 1 center point + (segments + 1) perimeter points
-        n = segments + 2; 
+        // 4. Update 'n'
+        // n = 1 (center) + (segCount + 1) (perimeter points)
+        n = segCount + 2; 
         break;
       default:
         break;
@@ -318,6 +326,24 @@ function main() {
       segments = parseInt(this.value); // Convert string to number
     });
   }
+
+  // Background Red Slider
+  document.getElementById('BGRed').addEventListener('input', function() {
+    g_backgroundColor[0] = this.value / 255; // Convert 0-255 to 0.0-1.0
+    renderAllShapes(gl, shader_vars);       // Redraw immediately
+  });
+
+  // Background Green Slider
+  document.getElementById('BGGreen').addEventListener('input', function() {
+    g_backgroundColor[1] = this.value / 255;
+    renderAllShapes(gl, shader_vars);
+  });
+
+  // Background Blue Slider
+  document.getElementById('BGBlue').addEventListener('input', function() {
+    g_backgroundColor[2] = this.value / 255;
+    renderAllShapes(gl, shader_vars);
+  });
 
   try {
     // Get the rendering context for WebGL
