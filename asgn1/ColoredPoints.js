@@ -144,10 +144,12 @@ function connectVariablesToGLSL(gl) {
 }
 
 function renderAllShapes(gl, shader_vars) {
+  /*
   // diagnotics for testing ---------------------------------------------------
   const diagnoticsDiv = document.getElementById("diagnostics");
   diagnoticsDiv.innerText = JSON.stringify({g_selectedShape, g_isDrawing, g_shapes})
   // end diagnotics for testing -----------------------------------------------
+  */
   gl.clear(gl.COLOR_BUFFER_BIT);
 
   for (const shape of g_shapes) {
@@ -189,10 +191,13 @@ function renderAllShapes(gl, shader_vars) {
         break;
       case 'circle':
         drawMode = gl.TRIANGLE_FAN;
-        // Array size: (Center point + perimeter points + closing point) * 2 coordinates
         const coords = []; 
 
-        // Perimeter points
+        // 1. Add the CENTER point of the circle first (this is the "hub" of the fan)
+        coords.push(x, y);
+
+        // 2. Loop to add perimeter points
+        // We go up to <= segments so that the last point overlaps the first point, closing the circle
         for (let i = 0; i <= segments; i++) {
           let angle = (i * 2 * Math.PI) / segments;
           let px = x + Math.cos(angle) * d;
@@ -201,7 +206,10 @@ function renderAllShapes(gl, shader_vars) {
           coords.push(px, py);
         }
         vertices = new Float32Array(coords);
-        n = segments 
+        
+        // 3. Update 'n'
+        // We added 1 center point + (segments + 1) perimeter points
+        n = segments + 2; 
         break;
       default:
         break;
@@ -307,7 +315,7 @@ function main() {
   const seg_slider = document.getElementById('Segment Size'); 
   if (seg_slider) {
     seg_slider.addEventListener("input", function() {
-      segments = this.value;
+      segments = parseInt(this.value); // Convert string to number
     });
   }
 

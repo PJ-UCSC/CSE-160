@@ -2,17 +2,28 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Assignment 0</title>
+    <title>Assignment 1</title>
     <style>
       .btn {
-        background-color: #3498db;
-        border-bottom: 5px solid #2980b9;
+        background-color: #ecf0f1; /* Light gray for unselected */
+        color: black;
+        padding: 10px 20px;
+        border: none;
+        border-bottom: 5px solid #bdc3c7; /* Darker gray bottom */
         transition: all 0.1s;
+        cursor: pointer;
       }
+
+      .btn:hover {
+        background-color: #d5dbdb;
+      }
+
+      /* This triggers when the button has the .selected class */
       .selected {
-        transform: translateY(1px);
-        border-bottom-width: 3px;
-        background-color: #2980b9;
+        background-color: #3498db !important; /* Blue */
+        color: white !important;
+        transform: translateY(2px); /* Pushes the button down */
+        border-bottom: 2px solid #2980b9 !important; /* Thinner border makes it look pressed */
       }
     </style>
   </head>
@@ -47,10 +58,10 @@
 
       <div class="shapeSliders">
         Shape Size: <input type="range" min="0" max="255" value="0" class="slider" id="Shape Size"> (Circles)
-        Segment Size: <input type="range" min="0" max="255" value="0" class="slider" id="Segment Size">
+        Segment Size: <input type="range" min="3" max="100" value="10" class="slider" id="Segment Size">
       </div>
     </p>
-    <div id="diagnostics" ></div>
+    <!-- <div id="diagnostics" ></div> -->
 
     <script src="lib/cuon-matrix.js"></script>
     <script src="lib/cuon-utils.js"></script>
