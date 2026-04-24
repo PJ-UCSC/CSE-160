@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<body onload="main()">
+    <canvas id="webgl" width="600" height="600" style="background-color: black;"></canvas>
+    <div id="fpsCounter" style="color: white; position: absolute; top: 10px; left: 10px;">FPS: 0</div>
+    
+    <div style="margin-top: 20px;">
+        <button id="animOn">Animation ON</button>
+        <button id="animOff">Animation OFF</button>
+        <p>Rotate with Mouse | Shift+Click to Poke</p>
+        
+        <h3>Hierarchy Controls</h3>
+          Neck: <input type="range" id="neckSlide" min="-45" max="45" value="0"><br>
+          Front Limb L1: <input type="range" id="armSlide" min="-45" max="45" value="0">
+          Front Limb L2: <input type="range" id="elbowSlide" min="0" max="60" value="0">
+          Front Limb L3: <input type="range" id="handSlide" min="-20" max="20" value="0"><br>
+          Back Limb L1: <input type="range" id="legSlide" min="-45" max="45" value="0">
+          Back Limb L2: <input type="range" id="kneeSlide" min="0" max="60" value="0">
+          Back Limb L3: <input type="range" id="footSlide" min="-20" max="20" value="0">
+    </div>
+
+    <script src="lib/webgl-utils.js"></script>
+    <script src="lib/webgl-debug.js"></script>
+    <script src="lib/cuon-utils.js"></script>
+    <script src="lib/cuon-matrix.js"></script>
+    <script src="asg2.js"></script>
+</body>
+</html>
