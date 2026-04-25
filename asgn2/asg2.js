@@ -148,8 +148,8 @@ function renderScene() {
 
   let headMat = new Matrix4(headBase);
   headMat.translate(0, 0.8, 0);
-  headMat.scale(1.6, 1.4, 1.6);
-  drawCube(headMat, [0.6, 0.6, 0.6]);
+  headMat.scale(1.1, 1.0, 1.1); // Slightly flattened sphere for a Koala look
+  drawSphere(headMat, [0.6, 0.6, 0.6]);
 
   let cheekL = new Matrix4(headBase);
   cheekL.translate(-0.8, 0.5, 0);
@@ -163,20 +163,20 @@ function renderScene() {
 
   // EYES (Small black cubes)
   let eyeL = new Matrix4(headBase);
-  eyeL.translate(-0.35, 0.9, 0.82);
+  eyeL.translate(-0.35, 0.9, 1.12);
   eyeL.scale(0.2, 0.2, 0.1);
   drawCube(eyeL, [0, 0, 0]);
 
   let eyeR = new Matrix4(headBase);
-  eyeR.translate(0.35, 0.9, 0.82);
+  eyeR.translate(0.35, 0.9, 1.12);
   eyeR.scale(0.2, 0.2, 0.1);
   drawCube(eyeR, [0, 0, 0]);
 
   // NOSE
   let noseMat = new Matrix4(headBase);
-  noseMat.translate(0, 0.6, 0.9);
-  noseMat.scale(0.5, 0.6, 0.3);
-  drawCube(noseMat, [0.15, 0.15, 0.2]);
+  noseMat.translate(0, 0.6, 0.9); // Place on the front of the sphere head
+  noseMat.scale(0.3, 0.45, 0.25); // Tall, narrow, and slightly protruding
+  drawSphere(noseMat, [0.1, 0.1, 0.15]); // Dark charcoal color
 
   // Left Ear
   let earL = new Matrix4(headBase);
@@ -375,5 +375,5 @@ function setupUI() {
   document.getElementById('legSlide').oninput = function() { g_legAngle = this.value; };
   document.getElementById('kneeSlide').oninput = function() { g_kneeAngle = this.value; };
   document.getElementById('footSlide').oninput = function() { g_footAngle = this.value; };
-  document.getElementById('angleSlide').oninput = function() { g_globalRotationY = this.value; };
+  document.getElementById('angleSlide').oninput = function() { g_globalRotationY = parseFloat(this.value) };
 }
