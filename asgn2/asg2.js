@@ -62,6 +62,7 @@ function main() {
   canvas.onmousemove = (ev) => { if(g_dragging) handleMouseMove(ev); };
   
   canvas.onclick = (ev) => { if(ev.shiftKey) { g_isPoked = true; setTimeout(()=>g_isPoked=false, 1000); }};
+  gl.clearColor(0.2, 0.4, 0.2, 1.0);
 
   gl.enable(gl.DEPTH_TEST);
   requestAnimationFrame(tick);
@@ -104,6 +105,12 @@ function handleMouseMove(ev) {
   g_lastX = ev.clientX; g_lastY = ev.clientY;
 }
 
+function drawTuft(matrix, color) {
+  let tuftMat = new Matrix4(matrix);
+  tuftMat.scale(0.3, 0.15, 0.3); // Make it a small, sharp spike
+  drawPyramid(tuftMat, color);
+}
+
 function renderScene() {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -125,6 +132,12 @@ function renderScene() {
   bodyMat.scale(2.2, 2.5, 1.8);
   drawCube(bodyMat, [0.6, 0.6, 0.6]);
 
+  // --- CHEST PATCH ---
+  let chestMat = new Matrix4(bodyMat); // Start with body's transform
+  chestMat.translate(0, 0, 0.51);       // Move slightly in front of the body
+  chestMat.scale(0.6, 0.7, 0.05);      // Make it a thin plate
+  drawCube(chestMat, [0.9, 0.9, 0.9]); // Off-white
+
   // --- HEAD HIERARCHY ---
   let neckMat = new Matrix4();
   neckMat.translate(0, 1.3, 0);
@@ -137,6 +150,16 @@ function renderScene() {
   headMat.translate(0, 0.8, 0);
   headMat.scale(1.6, 1.4, 1.6);
   drawCube(headMat, [0.6, 0.6, 0.6]);
+
+  let cheekL = new Matrix4(headBase);
+  cheekL.translate(-0.8, 0.5, 0);
+  cheekL.rotate(90, 0, 0, 1); // Point outward to the left
+  drawTuft(cheekL, [0.6, 0.6, 0.6]);
+
+  let cheekR = new Matrix4(headBase);
+  cheekR.translate(0.8, 0.5, 0);
+  cheekR.rotate(-90, 0, 0, 1); // Point outward to the right
+  drawTuft(cheekR, [0.6, 0.6, 0.6]);
 
   // EYES (Small black cubes)
   let eyeL = new Matrix4(headBase);
@@ -153,7 +176,7 @@ function renderScene() {
   let noseMat = new Matrix4(headBase);
   noseMat.translate(0, 0.6, 0.9);
   noseMat.scale(0.5, 0.6, 0.3);
-  drawCube(noseMat, [0.1, 0.1, 0.1]);
+  drawCube(noseMat, [0.15, 0.15, 0.2]);
 
   // Left Ear
   let earL = new Matrix4(headBase);
@@ -161,11 +184,36 @@ function renderScene() {
   earL.scale(0.7, 0.7, 1);       // Make it a large circle
   drawCircle(earL, [0.8, 0.8, 0.8]); // Lighter grey for inner ear fur
 
+  // Draw tufts along the left ear
+  let earL1Tuft = new Matrix4(earL);
+  earL1Tuft.translate(0, 0.8, 0);
+  earL1Tuft.rotate(-30, 0, 0, 1);
+  drawTuft(earL1Tuft, [0.8, 0.8, 0.8]);
+  let earL2Tuft = new Matrix4(earL);
+  earL2Tuft.translate(0.2, 0.7, 0);
+  earL2Tuft.rotate(-30, 0, 0, 1);
+  drawTuft(earL2Tuft, [0.8, 0.8, 0.8]);
+
   // Right Ear
-  let earR = new Matrix4(headBase);
-  earR.translate(0.8, 1.5, 0.2);
-  earR.scale(0.7, 0.7, 1);
-  drawCircle(earR, [0.8, 0.8, 0.8]);
+  let earR1 = new Matrix4(headBase);
+  earR1.translate(0.8, 1.5, 0.2);
+  earR1.scale(0.7, 0.7, 1);
+  drawCircle(earR1, [0.8, 0.8, 0.8]);
+  let earR2 = new Matrix4(headBase);
+  earR2.translate(0.8, 1.5, 0.15);
+  earR2.scale(0.7, 0.7, 1);
+  drawCircle(earR2, [0.8, 0.8, 0.8]);
+
+  // Draw tufts along the right ear
+  let earR1Tuft = new Matrix4(earR1);
+  earR1Tuft.translate(0, 0.8, 0);
+  earR1Tuft.rotate(30, 0, 0, 1); // Note: rotated positive 30 to point outward
+  drawTuft(earR1Tuft, [0.8, 0.8, 0.8]);
+
+  let earR2Tuft = new Matrix4(earR1);
+  earR2Tuft.translate(-0.2, 0.7, 0); // Note: negative translate to match symmetry
+  earR2Tuft.rotate(30, 0, 0, 1);
+  drawTuft(earR2Tuft, [0.8, 0.8, 0.8]);
 
   // --- LIMBS (Alternating movement) ---
   // Parameters: (tx, ty, tz, rotL1, rotL2, rotL3)
@@ -187,11 +235,16 @@ function renderLimb(tx, ty, tz, r1, r2, r3) {
   L1.scale(0.45, 0.9, 0.45);
   drawCube(L1, [0.5, 0.5, 0.5]);
 
+  let elbowTuft = new Matrix4(base);
+  elbowTuft.translate(0, -0.4, -0.2); // Move to the back of the "elbow"
+  elbowTuft.rotate(180, 1, 0, 0);     // Point it backward
+  drawTuft(elbowTuft, [0.5, 0.5, 0.5]);
+
   base.translate(0, -0.8, 0);
   base.rotate(r2, 1, 0, 0);
   let L2 = new Matrix4(base);
   L2.scale(0.35, 0.8, 0.35);
-  drawCube(L2, [0.5, 0.5, 0.5]);
+  drawCube(L2, [0.45, 0.45, 0.45]);
 
   base.translate(0, -0.5, 0.25);
   base.rotate(r3, 1, 0, 0);
@@ -231,6 +284,36 @@ function setupGeometry() {
     let angle = (i * 2 * Math.PI) / segments;
     circleVerts.push(Math.cos(angle), Math.sin(angle), 0);
   }
+
+  // --- SPHERE GEOMETRY ---
+  let sphereVerts = [];
+  let d = 10; // Resolution (Higher = smoother, but slower)
+  
+  for (let lat = 0; lat <= 180; lat += d) {
+    for (let lon = 0; lon <= 360; lon += d) {
+      // Convert degrees to radians
+      let r1 = lat * Math.PI / 180;
+      let r2 = (lat + d) * Math.PI / 180;
+      let c1 = lon * Math.PI / 180;
+      let c2 = (lon + d) * Math.PI / 180;
+
+      // Define 4 points of a quad on the sphere surface
+      let p1 = [Math.sin(r1)*Math.cos(c1), Math.sin(r1)*Math.sin(c1), Math.cos(r1)];
+      let p2 = [Math.sin(r2)*Math.cos(c1), Math.sin(r2)*Math.sin(c1), Math.cos(r2)];
+      let p3 = [Math.sin(r2)*Math.cos(c2), Math.sin(r2)*Math.sin(c2), Math.cos(r2)];
+      let p4 = [Math.sin(r1)*Math.cos(c2), Math.sin(r1)*Math.sin(c2), Math.cos(r1)];
+
+      // Triangle 1
+      sphereVerts.push(...p1, ...p2, ...p4);
+      // Triangle 2
+      sphereVerts.push(...p2, ...p3, ...p4);
+    }
+  }
+
+  shader_vars.sphereBuf = gl.createBuffer();
+  shader_vars.sphereVertCount = sphereVerts.length / 3;
+  gl.bindBuffer(gl.ARRAY_BUFFER, shader_vars.sphereBuf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sphereVerts), gl.STATIC_DRAW);
   
   shader_vars.circleBuf = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, shader_vars.circleBuf);
@@ -247,6 +330,16 @@ function drawCube(matrix, color) {
   // This is a "fake" lighting trick for 3D look without light shaders
   gl.vertexAttrib4f(shader_vars.a_Color, color[0], color[1], color[2], 1.0);
   gl.drawArrays(gl.TRIANGLES, 0, 36);
+}
+
+function drawSphere(matrix, color) {
+  gl.uniformMatrix4fv(shader_vars.u_ModelMatrix, false, matrix.elements);
+  gl.bindBuffer(gl.ARRAY_BUFFER, shader_vars.sphereBuf);
+  gl.vertexAttribPointer(shader_vars.a_Position, 3, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(shader_vars.a_Position);
+  
+  gl.vertexAttrib4f(shader_vars.a_Color, color[0], color[1], color[2], 1.0);
+  gl.drawArrays(gl.TRIANGLES, 0, shader_vars.sphereVertCount);
 }
 
 function drawPyramid(matrix) {
@@ -282,4 +375,5 @@ function setupUI() {
   document.getElementById('legSlide').oninput = function() { g_legAngle = this.value; };
   document.getElementById('kneeSlide').oninput = function() { g_kneeAngle = this.value; };
   document.getElementById('footSlide').oninput = function() { g_footAngle = this.value; };
+  document.getElementById('angleSlide').oninput = function() { g_globalRotationY = this.value; };
 }
