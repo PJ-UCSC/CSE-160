@@ -375,5 +375,6 @@ function setupUI() {
   document.getElementById('legSlide').oninput = function() { g_legAngle = this.value; };
   document.getElementById('kneeSlide').oninput = function() { g_kneeAngle = this.value; };
   document.getElementById('footSlide').oninput = function() { g_footAngle = this.value; };
-  document.getElementById('angleSlide').oninput = function() { g_globalRotationY = parseFloat(this.value) };
+  document.getElementById('angleXSlide').oninput = function() { g_globalRotationX = parseFloat(this.value) };
+  document.getElementById('angleYSlide').oninput = function() { g_globalRotationY = parseFloat(this.value) };
 }
