@@ -75,26 +75,55 @@ function render() {
     gl.uniformMatrix4fv(shader_vars.u_ProjectionMatrix, false, camera.projectionMatrix.elements);
     gl.uniformMatrix4fv(shader_vars.u_ViewMatrix, false, camera.viewMatrix.elements);
 
-    // Environment
+    // --- Environment ---
     drawCube(new Matrix4().scale(-500, -500, -500), shader_vars.whiteTex, [0.4, 0.6, 1, 1], 0.0);
     drawCube(new Matrix4().translate(16, -0.5, 16).scale(32, 0.1, 32), shader_vars.whiteTex, [0.2, 0.5, 0.2, 1], 0.0);
 
-    // Walls
+    // --- Walls ---
     for(let x=0; x<32; x++) for(let z=0; z<32; z++) for(let y=0; y<MAP[x][z]; y++)
         drawCube(new Matrix4().translate(x, y, z), shader_vars.wallTex, [1,1,1,1], 1.0);
 
-    // Zombie Facing Camera
+    // --- The Designed Zombie ---
     if (!zombie.dead) {
+        // Calculate angle to face camera
         let dx = camera.eye.elements[0] - zombie.pos[0];
         let dz = camera.eye.elements[2] - zombie.pos[2];
-        let angle = Math.atan2(dx, dz) * 180 / Math.PI; // Calculate rotation angle
+        let angle = Math.atan2(dx, dz) * 180 / Math.PI;
 
-        let zMat = new Matrix4();
-        zMat.translate(zombie.pos[0], 0.4, zombie.pos[2]);
-        zMat.rotate(angle, 0, 1, 0); // Face the camera
-        zMat.scale(0.6, 1.2, 0.6);
-        drawCube(zMat, shader_vars.whiteTex, [0, 0.5, 0, 1], 0.0);
+        drawZombie(zombie.pos[0], 0, zombie.pos[2], angle);
     }
+}
+
+function drawZombie(x, y, z, angle) {
+    // Set to color-only mode for the zombie
+    gl.uniform1f(shader_vars.u_texColorWeight, 0.0);
+
+    // Create a base matrix for the whole zombie
+    let baseMat = new Matrix4().translate(x, y, z).rotate(angle, 0, 1, 0);
+
+    // 1. Legs (Blue pants)
+    let leftLeg = new Matrix4(baseMat).translate(-0.12, 0.2, 0).scale(0.2, 0.4, 0.2);
+    drawCube(leftLeg, shader_vars.whiteTex, [0, 0, 0.5, 1], 0.0);
+    
+    let rightLeg = new Matrix4(baseMat).translate(0.12, 0.2, 0).scale(0.2, 0.4, 0.2);
+    drawCube(rightLeg, shader_vars.whiteTex, [0, 0, 0.5, 1], 0.0);
+
+    // 2. Body (Teal shirt)
+    let body = new Matrix4(baseMat).translate(0, 0.6, 0).scale(0.45, 0.5, 0.2);
+    drawCube(body, shader_vars.whiteTex, [0, 0.5, 0.5, 1], 0.0);
+
+    // 3. Head (Green skin)
+    let head = new Matrix4(baseMat).translate(0, 0.95, 0).scale(0.35, 0.35, 0.35);
+    drawCube(head, shader_vars.whiteTex, [0, 0.7, 0, 1], 0.0);
+
+    // 4. Arms (Green skin, pointing forward like a zombie)
+    // Left Arm
+    let leftArm = new Matrix4(baseMat).translate(-0.3, 0.7, 0.2).scale(0.15, 0.15, 0.5);
+    drawCube(leftArm, shader_vars.whiteTex, [0, 0.7, 0, 1], 0.0);
+
+    // Right Arm
+    let rightArm = new Matrix4(baseMat).translate(0.3, 0.7, 0.2).scale(0.15, 0.15, 0.5);
+    drawCube(rightArm, shader_vars.whiteTex, [0, 0.7, 0, 1], 0.0);
 }
 
 function tick() {
