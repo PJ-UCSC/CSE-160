@@ -10,12 +10,11 @@ class Camera {
         this.isDead = false;
     }
 
-    // Collision Check logic
     #checkCollision(newPos) {
         let x = Math.round(newPos.elements[0]);
         let z = Math.round(newPos.elements[2]);
         if (x < 0 || x >= 32 || z < 0 || z >= 32) return true;
-        if (MAP[x][z] >= 1) return true; // Collide if wall height is 1 or more
+        if (MAP[x][z] >= 1) return true; // Collision with block height >= 1
         return false;
     }
 
