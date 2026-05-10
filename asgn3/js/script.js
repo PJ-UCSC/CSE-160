@@ -68,7 +68,7 @@ function startNextWave() {
         return;
     }
     document.getElementById('wave-display').innerText = "WAVE: " + currentWave;
-    spawnZombies(currentWave == 2 ? 1 : 2);
+    spawnZombies(currentWave == 2 ? 3 : 5);
 }
 
 function restartWaves() {
