@@ -8,6 +8,7 @@ class Camera {
         this.speed = 0.15;
         this.hp = 100;
         this.isDead = false;
+        this.speed = 0.1;
     }
 
     #checkCollision(newPos) {

@@ -5,6 +5,7 @@ let canvas, gl, camera, shader_vars = {};
 let g_dragging = false, g_lastX = -1;
 let MAP = []; 
 let zombies = [];
+let g_keys = {};
 let currentWave = 1;
 let waveActive = true;
 let freeBuildMode = false;
@@ -78,6 +79,15 @@ function drawZombie(x, y, z, angle) {
 
 function tick() {
     if (!waveActive || camera.isDead) { render(); requestAnimationFrame(tick); return; }
+    if (camera.isDead) { render(); requestAnimationFrame(tick); return; }
+
+    if (g_keys['w']) camera.moveForward();
+    if (g_keys['s']) camera.moveBackward();
+    if (g_keys['a']) camera.moveLeft();
+    if (g_keys['d']) camera.moveRight();
+    if (g_keys['q']) camera.panLeft();
+    if (g_keys['e']) camera.panRight();
+
     let allDead = true;
     for (let z of zombies) {
         if (z.dead) continue;
@@ -218,13 +228,8 @@ function main() {
     canvas.onmouseup = () => g_dragging = false;
     canvas.onmousemove = (e) => { if(g_dragging) { camera.panRight((e.clientX - g_lastX) * -0.2); g_lastX = e.clientX; }};
 
-    document.addEventListener('keydown', (e) => {
-        if (camera.isDead) return;
-        if(e.key==='w')camera.moveForward(); if(e.key==='s')camera.moveBackward(); if(e.key==='a')camera.moveLeft(); if(e.key==='d')camera.moveRight(); if(e.key==='q')camera.panLeft(); if(e.key==='e')camera.panRight();
-        let f=new Vector3(); f.set(camera.at); f.sub(camera.eye); f.normalize();
-        let tx=Math.round(camera.eye.elements[0]+f.elements[0]*1.5), tz=Math.round(camera.eye.elements[2]+f.elements[2]*1.5);
-        if(tx>=0&&tx<32&&tz>=0&&tz<32){ if(e.key==='z'&&MAP[tx][tz]<4)MAP[tx][tz]++; if(e.key==='x'&&MAP[tx][tz]>0)MAP[tx][tz]--; }
-    });
+    document.addEventListener('keydown', (e) => { g_keys[e.key.toLowerCase()] = true; });
+    document.addEventListener('keyup', (e) => { g_keys[e.key.toLowerCase()] = false; });
 
     gl.enable(gl.DEPTH_TEST);
     tick();
