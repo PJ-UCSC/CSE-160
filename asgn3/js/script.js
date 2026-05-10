@@ -8,6 +8,7 @@ let zombies = [];
 let currentWave = 1;
 let waveActive = true;
 let freeBuildMode = false;
+let g_dirtTex, g_grassTex;
 
 // Initialize 32x32 height map with borders
 for(let i=0; i<32; i++) {
@@ -92,15 +93,89 @@ function tick() {
     requestAnimationFrame(tick);
 }
 
+function initTextures(gl, callback) {
+    let imagesLoaded = 0;
+    const totalImages = 2;
+
+    function onImageLoad(img, texVar, isAtlas) {
+        let tex = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        // Use NEAREST for that blocky Minecraft look
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        
+        // Use REPEAT so the ground texture doesn't stretch
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+        
+        if (texVar === 'dirt') g_dirtTex = tex;
+        if (texVar === 'grass') g_grassTex = tex;
+
+        imagesLoaded++;
+        if (imagesLoaded === totalImages) callback();
+    }
+
+    let imgDirt = new Image();
+    imgDirt.onload = () => onImageLoad(imgDirt, 'dirt');
+    imgDirt.src = 'images/dirt.png'; // Make sure this path is correct
+
+    let imgGrass = new Image();
+    imgGrass.onload = () => onImageLoad(imgGrass, 'grass');
+    imgGrass.src = 'images/atlas.png'; // Using the atlas for the ground
+}
+
+function initMap() {
+    for(let i=0; i<32; i++) {
+        MAP[i] = new Array(32).fill(0);
+    }
+
+    for(let i=0; i<32; i++) {
+        // Left and Right walls
+        MAP[i][0] = Math.floor(Math.random() * 4) + 1; 
+        MAP[i][31] = Math.floor(Math.random() * 4) + 1;
+        // Top and Bottom walls
+        MAP[0][i] = Math.floor(Math.random() * 4) + 1;
+        MAP[31][i] = Math.floor(Math.random() * 4) + 1;
+    }
+    
+    for(let i=0; i<15; i++) {
+        let rx = Math.floor(Math.random() * 28) + 2;
+        let rz = Math.floor(Math.random() * 28) + 2;
+        MAP[rx][rz] = Math.floor(Math.random() * 3) + 1;
+    }
+}
+
 function render() {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.uniformMatrix4fv(shader_vars.u_ProjectionMatrix, false, camera.projectionMatrix.elements);
     gl.uniformMatrix4fv(shader_vars.u_ViewMatrix, false, camera.viewMatrix.elements);
-    drawCube(new Matrix4().scale(-500, -500, -500), shader_vars.whiteTex, [0.4, 0.6, 1, 1], 0.0); // Sky
-    drawCube(new Matrix4().translate(16, -0.5, 16).scale(32, 0.1, 32), shader_vars.whiteTex, [0.2, 0.5, 0.2, 1], 0.0); // Ground
-    for(let x=0; x<32; x++) for(let z=0; z<32; z++) for(let y=0; y<MAP[x][z]; y++)
-        drawCube(new Matrix4().translate(x, y, z), shader_vars.wallTex, [1,1,1,1], 1.0);
-    for (let z of zombies) if (!z.dead) drawZombie(z.pos[0], 0, z.pos[2], Math.atan2(camera.eye.elements[0]-z.pos[0], camera.eye.elements[2]-z.pos[2])*180/Math.PI);
+
+    drawCube(new Matrix4().scale(-500, -500, -500), shader_vars.whiteTex, [0.4, 0.6, 1, 1], 0.0);
+
+    let groundMat = new Matrix4().translate(16, -0.5, 16).scale(32, 0.1, 32);
+    drawCube(groundMat, g_grassTex, [1, 1, 1, 1], 1.0);
+
+    for(let x=0; x<32; x++) {
+        for(let z=0; z<32; z++) {
+            for(let y=0; y<MAP[x][z]; y++) {
+                drawCube(new Matrix4().translate(x, y, z), g_dirtTex, [1,1,1,1], 1.0);
+            }
+        }
+    }
+
+    for(let x=0; x<32; x++) {
+        for(let z=0; z<32; z++) {
+            for(let y=0; y<MAP[x][z]; y++) {
+                drawCube(new Matrix4().translate(x, y, z), shader_vars.wallTex, [1,1,1,1], 1.0);
+            }
+        }
+    }
+
+    for (let z of zombies) {
+        if (!z.dead) drawZombie(z.pos[0], 0, z.pos[2], Math.atan2(camera.eye.elements[0]-z.pos[0], camera.eye.elements[2]-z.pos[2])*180/Math.PI);
+    }
 }
 
 function main() {
@@ -118,11 +193,21 @@ function main() {
     let ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, i, gl.STATIC_DRAW);
 
     // Textures
-    shader_vars.whiteTex = (function(){ let t=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255,255,255,255])); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); return t; })();
-    shader_vars.wallTex = (function(){ let c=document.createElement('canvas'); c.width=64; c.height=64; let x=c.getContext('2d'); x.fillStyle="#8d6b4a"; x.fillRect(0,0,64,64); x.fillStyle="#6b4e32"; for(let i=0;i<8;i++)for(let j=0;j<8;j++)if((i+j)%2==0)x.fillRect(i*8,j*8,8,8); let t=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,t); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,c); gl.generateMipmap(gl.TEXTURE_2D); return t; })();
+    shader_vars.whiteTex = (function(){ 
+        let t=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); 
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255,255,255,255])); 
+        return t; 
+    })();
 
+    initMap();
     camera = new Camera(canvas);
     spawnZombies(1);
+
+    // Load images, THEN start the game loop
+    initTextures(gl, () => {
+        gl.enable(gl.DEPTH_TEST);
+        tick();
+    });
     
     canvas.onmousedown = (e) => { 
         if (e.button === 0) { 
