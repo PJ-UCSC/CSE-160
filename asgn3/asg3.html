@@ -4,6 +4,13 @@
     <div id="game-ui" style="position: relative; width: 600px; height: 600px; margin: auto;">
         <canvas id="webgl" width="600" height="600" style="background-color: black; cursor: crosshair;"></canvas>
         
+        <!-- Main Menu -->
+        <div id="main-menu" style="display: flex; position: absolute; top: 0; left: 0; width: 600px; height: 600px; background: rgba(0,0,0,0.85); color: #00ff00; flex-direction: column; justify-content: center; align-items: center; z-index: 10; text-align: center; font-family: sans-serif;">
+            <h1>MAIN MENU</h1>
+            <p>The zombies are attacking! Try to survive the three waves</p>
+            <button onclick="startGame()" style="padding: 10px 20px; cursor: pointer;">START GAME</button>
+        </div>
+
         <!-- Wave Counter -->
         <div id="wave-display" style="position: absolute; top: 10px; right: 10px; color: white; font-family: monospace; font-size: 20px; text-shadow: 2px 2px black;">WAVE: 1</div>
 
@@ -16,7 +23,7 @@
         <!-- Congratulations Overlay -->
         <div id="congrats" style="display: none; position: absolute; top: 0; left: 0; width: 600px; height: 600px; background: rgba(0,0,0,0.85); color: #00ff00; flex-direction: column; justify-content: center; align-items: center; z-index: 10; text-align: center; font-family: sans-serif;">
             <h1>VICTORY!</h1>
-            <p>The horde has been defeated.</p>
+            <p>The zombies have been defeated.</p>
             <button onclick="restartWaves()" style="margin-bottom: 10px; width: 150px; cursor: pointer;">RESTART WAVES</button>
             <button onclick="stayInWorld()" style="width: 150px; cursor: pointer;">STAY AND BUILD</button>
         </div>
