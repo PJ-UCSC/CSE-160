@@ -32,6 +32,7 @@ let currentWave = 1;
 let waveActive = true;
 let freeBuildMode = false;
 let gameStarted = false;
+let g_lastFrameTime = performance.now();
 let g_dirtTex, g_grassTex;
 
 // Initialize 32x32 height map with borders
@@ -106,6 +107,15 @@ function drawZombie(x, y, z, angle) {
 }
 
 function tick() {
+    // --- FPS CALCULATION ---
+    let now = performance.now();
+    let duration = now - g_lastFrameTime;
+    g_lastFrameTime = now;
+    if (duration > 0) {
+        let fps = Math.round(1000 / duration);
+        document.getElementById('fps-counter').innerText = "FPS: " + fps;
+    }
+
     // 1. Always render
     render();
 
