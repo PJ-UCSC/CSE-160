@@ -151,6 +151,11 @@ function tick() {
                 document.getElementById('hp-bar').style.width = Math.max(0, camera.hp) + "%"; 
             }
         }
+
+        if (camera.hp <= 0) {
+            camera.isDead = true;
+            document.getElementById('game-over').style.display = 'flex';
+        }
         
         if (allDead && !freeBuildMode) startNextWave();
     }
