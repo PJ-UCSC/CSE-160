@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<body onload="main()">
+    <div id="game-ui" style="position: relative; width: 600px; height: 600px; margin: auto;">
+        <canvas id="webgl" width="600" height="600" style="background-color: black; cursor: crosshair;"></canvas>
+
+        <!-- FPS Counter -->
+        <div id="fps-counter" style="position: absolute; top: 10px; left: 10px; color: yellow; font-family: monospace; font-size: 18px; text-shadow: 2px 2px black; z-index: 5;">FPS: 0</div>
+        
+        <!-- Main Menu -->
+        <div id="main-menu" style="display: flex; position: absolute; top: 0; left: 0; width: 600px; height: 600px; background: rgba(0,0,0,0.85); color: #00ff00; flex-direction: column; justify-content: center; align-items: center; z-index: 10; text-align: center; font-family: sans-serif;">
+            <h1>MAIN MENU</h1>
+            <p>The zombies are attacking! Try to survive the three waves</p>
+            <button onclick="startGame()" style="padding: 10px 20px; cursor: pointer;">START GAME</button>
+        </div>
+
+        <!-- Wave Counter -->
+        <div id="wave-display" style="position: absolute; top: 10px; right: 10px; color: white; font-family: monospace; font-size: 20px; text-shadow: 2px 2px black;">WAVE: 1</div>
+
+        <!-- Game Over Overlay -->
+        <div id="game-over" style="display: none; position: absolute; top: 0; left: 0; width: 600px; height: 600px; background: black; color: red; flex-direction: column; justify-content: center; align-items: center; z-index: 10; font-family: sans-serif;">
+            <h1 style="font-size: 50px;">GAME OVER</h1>
+            <button onclick="location.reload()" style="padding: 10px 20px; cursor: pointer;">RESPAWN</button>
+        </div>
+
+        <!-- Congratulations Overlay -->
+        <div id="congrats" style="display: none; position: absolute; top: 0; left: 0; width: 600px; height: 600px; background: rgba(0,0,0,0.85); color: #00ff00; flex-direction: column; justify-content: center; align-items: center; z-index: 10; text-align: center; font-family: sans-serif;">
+            <h1>VICTORY!</h1>
+            <p>The zombies have been defeated.</p>
+            <button onclick="restartWaves()" style="margin-bottom: 10px; width: 150px; cursor: pointer;">RESTART WAVES</button>
+            <button onclick="stayInWorld()" style="width: 150px; cursor: pointer;">STAY AND BUILD</button>
+        </div>
+
+        <!-- Health Bar -->
+        <div style="position: absolute; bottom: 20px; left: 20px; width: 200px; height: 20px; border: 2px solid white; background: #333;">
+            <div id="hp-bar" style="width: 100%; height: 100%; background: #ff0000; transition: width 0.2s;"></div>
+        </div>
+    </div>
+
+    <p style="font-family: Verdana, Geneva, Tahoma, sans-serif; text-align: center;">Z to place block, X deletes a block from the top of the stack</p>
+    <p style="font-family: Verdana, Geneva, Tahoma, sans-serif; text-align: center;">W is Up, A is Left, S is Down, D is Right</p>
+    <p style="font-family: Verdana, Geneva, Tahoma, sans-serif; text-align: center;">Left Click attacks zombies</p>
+
+    <!-- Load Libraries -->
+    <script src="lib/webgl-utils.js"></script>
+    <script src="lib/webgl-debug.js"></script>
+    <script src="lib/cuon-utils.js"></script>
+    <script src="lib/cuon-matrix.js"></script>
+    <script src="js/camera.js"></script>
+    <script src="js/script.js"></script>
+</body>
+</html>
