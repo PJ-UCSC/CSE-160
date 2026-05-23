@@ -6,14 +6,18 @@ const VSHADER_SOURCE = `
     uniform mat4 u_ModelMatrix;
     uniform mat4 u_ProjectionMatrix;
     uniform mat4 u_ViewMatrix;
+    uniform mat3 u_NormalMatrix;
 
     varying vec2 v_TextureCoordinate;
-    varying vec3 v_Normal;
+    varying vec3 v_WorldPosition;
+    varying vec3 v_WorldNormal;
 
     void main() {
+        vec4 worldPosition = u_ModelMatrix * a_Position;
+        v_WorldPosition = worldPosition.xyz;
+        v_WorldNormal = normalize(u_NormalMatrix * a_Normal);
         gl_Position = u_ProjectionMatrix * u_ViewMatrix * u_ModelMatrix * a_Position;
         v_TextureCoordinate = a_TextureCoordinate;
-        v_Normal = a_Normal;
     }
 `;
 
@@ -21,19 +25,45 @@ const FSHADER_SOURCE = `
     precision mediump float;
 
     varying vec2 v_TextureCoordinate;
-    varying vec3 v_Normal;
+    varying vec3 v_WorldPosition;
+    varying vec3 v_WorldNormal;
 
     uniform sampler2D u_Sampler;
     uniform vec4 u_Color;
     uniform float u_texColorWeight;
     uniform float u_ShowNormals;
+    uniform float u_showDiffuse;
+    uniform vec3 u_LightPosition;
+    uniform vec3 u_CameraPosition;
+    uniform vec3 u_LightColor;
+    uniform float u_Shininess;
 
     void main() {
-        if (u_ShowNormals > 0.5){
-            gl_FragColor = vec4(v_Normal, 1.0);
+        if (u_ShowNormals > 0.5) {
+            gl_FragColor = vec4(v_WorldNormal * 0.5 + 0.5, 1.0);
         } else {
             vec4 texColor = texture2D(u_Sampler, v_TextureCoordinate);
-            gl_FragColor = (1.0 - u_texColorWeight) * u_Color + u_texColorWeight * texColor;
+            vec4 baseColor = (1.0 - u_texColorWeight) * u_Color + u_texColorWeight * texColor;
+
+            if (u_showDiffuse > 0.5) {
+                vec3 lightDir = normalize(u_LightPosition - v_WorldPosition);
+                vec3 normal = normalize(v_WorldNormal);
+                vec3 viewDir = normalize(u_CameraPosition - v_WorldPosition);
+                vec3 reflectDir = reflect(-lightDir, normal);
+
+                vec3 diffuse = max(0.0, dot(normal, lightDir)) * u_LightColor;
+                vec3 specular = pow(max(0.0, dot(viewDir, reflectDir)), u_Shininess) * u_LightColor;
+
+                vec3 albedo = baseColor.rgb;
+
+                vec3 ambient = 0.15 * albedo;
+                vec3 diffuseColor = diffuse * albedo;
+                vec3 specularColor = 0.4 * specular;
+
+                gl_FragColor = vec4(ambient + diffuseColor + specularColor, baseColor.a);
+            } else {
+                gl_FragColor = baseColor;
+            }
         }
     }
 `;
@@ -50,6 +80,12 @@ let gameStarted = false;
 let g_lastFrameTime = performance.now();
 let g_dirtTex, g_grassTex;
 let g_showNormals = false;
+let g_showDiffuse = true;
+
+let g_lightColor = [0.5, 0.5, 0.5];
+let g_lightCenterPosition = [0, 0, 0];
+
+const g_normalMatrix = new Float32Array(9);
 
 // Initialize 32x32 height map with borders
 for(let i=0; i<32; i++) {
@@ -57,6 +93,38 @@ for(let i=0; i<32; i++) {
     MAP[i][0] = 4; MAP[i][31] = 4;
 }
 MAP[0] = new Array(32).fill(4); MAP[31] = new Array(32).fill(4);
+
+
+function updateLightPositionX( value) {
+    g_lightCenterPosition[0] = value;
+    document.getElementById('lightX-input').value = value;
+    document.getElementById('lightX').value = value;
+}
+function updateLightPositionY( value) {
+    g_lightCenterPosition[1] = value;
+    document.getElementById('lightY-input').value = value;
+    document.getElementById('lightY').value = value;
+}
+
+function updateLightPositionZ( value) {
+    g_lightCenterPosition[2] = value;
+    document.getElementById('lightZ-input').value = value;
+    document.getElementById('lightZ').value = value;
+}
+
+function toggleShowNormals() {
+    g_showNormals = !g_showNormals;
+    const btn = document.getElementById('toggle-normals-btn');
+    if (btn) btn.textContent = g_showNormals ? 'Show Normals: ON' : 'Show Normals: OFF';
+    render();
+}
+
+function toggleShowDiffuse() {
+    g_showDiffuse = !g_showDiffuse;
+    const btn = document.getElementById('toggle-diffuse-btn');
+    if (btn) btn.textContent = g_showDiffuse ? 'Show Diffuse: ON' : 'Show Diffuse: OFF';
+    render();
+}
 
 function startGame() {
     gameStarted = true;
@@ -103,7 +171,24 @@ function stayInWorld() {
     freeBuildMode = true;
 }
 
-function drawCube(matrix, texture, color, weight) {
+function getNormalMatrix(matrix) {
+    let normalMatrix = new Matrix4();
+    normalMatrix.setInverseOf(matrix);
+    normalMatrix.transpose();
+    const elements = normalMatrix.elements;
+    g_normalMatrix[0] = elements[0]; 
+    g_normalMatrix[1] = elements[1]; 
+    g_normalMatrix[2] = elements[2];
+    g_normalMatrix[3] = elements[4]; 
+    g_normalMatrix[4] = elements[5]; 
+    g_normalMatrix[5] = elements[6]; 
+    g_normalMatrix[6] = elements[8];
+    g_normalMatrix[7] = elements[9]; 
+    g_normalMatrix[8] = elements[10];
+    return g_normalMatrix;
+}
+
+function drawCube(matrix, texture, color, weight, shininess, showDiffuse = g_showDiffuse) {
     const geomSizeOf = shader_vars.cubeGeomSizeOf;
     const geomBufStride = geomSizeOf * 8;
     
@@ -118,17 +203,20 @@ function drawCube(matrix, texture, color, weight) {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, shader_vars.cubeIndexBuf);
 
     gl.uniformMatrix4fv(shader_vars.u_ModelMatrix, false, matrix.elements);
+    gl.uniformMatrix3fv(shader_vars.u_NormalMatrix, false, getNormalMatrix(matrix));
     gl.uniform4f(shader_vars.u_Color, color[0], color[1], color[2], color[3]);
     gl.uniform1f(shader_vars.u_texColorWeight, weight);
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.uniform1i(shader_vars.u_Sampler, 0);
 
     gl.uniform1f(shader_vars.u_ShowNormals, g_showNormals ? 1.0 : 0.0);
+    gl.uniform1f(shader_vars.u_showDiffuse, showDiffuse ? 1.0 : 0.0);
+    gl.uniform1f(shader_vars.u_Shininess, shininess);
 
     gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
 }
 
-function drawSphere(matrix, texture, color, weight) {
+function drawSphere(matrix, texture, color, weight, shininess, showDiffuse = g_showDiffuse) {
     const geomSizeOf = shader_vars.sphereGeomSizeOf;
     const geomBufStride = geomSizeOf * 8;
     
@@ -149,18 +237,20 @@ function drawSphere(matrix, texture, color, weight) {
     gl.uniform1i(shader_vars.u_Sampler, 0);
 
     gl.uniform1f(shader_vars.u_ShowNormals, g_showNormals ? 1.0 : 0.0);
+    gl.uniform1f(shader_vars.u_showDiffuse, showDiffuse ? 1.0 : 0.0);
+    gl.uniform1f(shader_vars.u_Shininess, shininess);
 
     gl.drawElements(gl.TRIANGLES, shader_vars.sphereIndexCnt, gl.UNSIGNED_SHORT, 0);
 }
 
-function drawZombie(x, y, z, angle) {
+function drawZombie(x, y, z, angle, shininess = 5) {
     let baseMat = new Matrix4().translate(x, y, z).rotate(angle, 0, 1, 0);
-    drawCube(new Matrix4(baseMat).translate(0, 0.95, 0).scale(0.35, 0.35, 0.35), shader_vars.whiteTex, [0, 0.7, 0, 1], 0.0); // Head
-    drawCube(new Matrix4(baseMat).translate(0, 0.6, 0).scale(0.45, 0.5, 0.2), shader_vars.whiteTex, [0, 0.5, 0.5, 1], 0.0); // Body
-    drawCube(new Matrix4(baseMat).translate(-0.12, 0.2, 0).scale(0.2, 0.4, 0.2), shader_vars.whiteTex, [0, 0, 0.5, 1], 0.0); // Leg L
-    drawCube(new Matrix4(baseMat).translate(0.12, 0.2, 0).scale(0.2, 0.4, 0.2), shader_vars.whiteTex, [0, 0, 0.5, 1], 0.0); // Leg R
-    drawCube(new Matrix4(baseMat).translate(-0.3, 0.7, 0.2).scale(0.15, 0.15, 0.5), shader_vars.whiteTex, [0, 0.7, 0, 1], 0.0); // Arm L
-    drawCube(new Matrix4(baseMat).translate(0.3, 0.7, 0.2).scale(0.15, 0.15, 0.5), shader_vars.whiteTex, [0, 0.7, 0, 1], 0.0); // Arm R
+    drawCube(new Matrix4(baseMat).translate(0, 0.95, 0).scale(0.35, 0.35, 0.35), shader_vars.whiteTex, [0, 0.7, 0, 1], 0.0, shininess); // Head
+    drawCube(new Matrix4(baseMat).translate(0, 0.6, 0).scale(0.45, 0.5, 0.2), shader_vars.whiteTex, [0, 0.5, 0.5, 1], 0.0, shininess); // Body
+    drawCube(new Matrix4(baseMat).translate(-0.12, 0.2, 0).scale(0.2, 0.4, 0.2), shader_vars.whiteTex, [0, 0, 0.5, 1], 0.0, shininess); // Leg L
+    drawCube(new Matrix4(baseMat).translate(0.12, 0.2, 0).scale(0.2, 0.4, 0.2), shader_vars.whiteTex, [0, 0, 0.5, 1], 0.0, shininess); // Leg R
+    drawCube(new Matrix4(baseMat).translate(-0.3, 0.7, 0.2).scale(0.15, 0.15, 0.5), shader_vars.whiteTex, [0, 0.7, 0, 1], 0.0, shininess); // Arm L
+    drawCube(new Matrix4(baseMat).translate(0.3, 0.7, 0.2).scale(0.15, 0.15, 0.5), shader_vars.whiteTex, [0, 0.7, 0, 1], 0.0, shininess); // Arm R
 }
 
 function tick() {
@@ -172,6 +262,17 @@ function tick() {
         let fps = Math.round(1000 / duration);
         document.getElementById('fps-counter').innerText = "FPS: " + fps;
     }
+
+    // 0. Update light position move slightly in the y direction
+    if (gameStarted) {
+        g_lightCenterPosition[1] += 0.01;
+        if (g_lightCenterPosition[1] > 40) {
+            g_lightCenterPosition[1] = -10;
+        }
+        updateLightPositionX(g_lightCenterPosition[1]);
+    }
+    //g_lightCenterPosition[1] = g_lightPosition[1];
+    //g_lightCenterPosition[2] = g_lightPosition[2];
 
     // 1. Always render
     render();
@@ -278,19 +379,23 @@ function render() {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.uniformMatrix4fv(shader_vars.u_ProjectionMatrix, false, camera.projectionMatrix.elements);
     gl.uniformMatrix4fv(shader_vars.u_ViewMatrix, false, camera.viewMatrix.elements);
+    gl.uniform3f(shader_vars.u_CameraPosition, camera.eye.elements[0], camera.eye.elements[1], camera.eye.elements[2]);
+
+    gl.uniform3f(shader_vars.u_LightPosition, g_lightCenterPosition[0], g_lightCenterPosition[1], g_lightCenterPosition[2]);
+    gl.uniform3f(shader_vars.u_LightColor, g_lightColor[0], g_lightColor[1], g_lightColor[2]);
 
     // 1. Sky
-    drawCube(new Matrix4().scale(-500, -500, -500), shader_vars.whiteTex, [0.4, 0.6, 1, 1], 0.0);
+    drawCube(new Matrix4().scale(-500, -500, -500), shader_vars.whiteTex, [0.4, 0.6, 1, 1], 0.0, 0, false);
 
     // 2. Ground
     let groundMat = new Matrix4().translate(16, -0.5, 16).scale(32, 0.1, 32);
-    drawCube(groundMat, g_grassTex, [1, 1, 1, 1], 1.0);
+    drawCube(groundMat, g_grassTex, [1, 1, 1, 1], 1.0, 100, true);
 
     // 3. Walls (Using Dirt Texture)
     for(let x=0; x<32; x++) {
         for(let z=0; z<32; z++) {
             for(let y=0; y<MAP[x][z]; y++) {
-                drawSphere(new Matrix4().translate(x, y, z), g_dirtTex, [1,1,1,1], 1.0);
+                drawCube(new Matrix4().translate(x, y, z), g_dirtTex, [1,1,1,1], 1.0, 40, true);
             }
         }
     }
@@ -300,27 +405,49 @@ function render() {
         if (!z.dead) drawZombie(z.pos[0], 0, z.pos[2], Math.atan2(camera.eye.elements[0]-z.pos[0], camera.eye.elements[2]-z.pos[2])*180/Math.PI);
     }
 
+    // 5. Random colored cube
+    let coloredCubeMat = new Matrix4().translate(16, 0, 11).scale(1, 1, 1);
+    drawCube(coloredCubeMat, g_dirtTex, [1,.5,1,0], 0.5, 25, true);
+
     // 5. Random sphere
-    let sphereMat = new Matrix4().translate(14, 1, 12).scale(1, 1, 1);
-    drawSphere(sphereMat, g_dirtTex, [1,.5,1,1], 1.0)
+    let sphereMat = new Matrix4().translate(14, 0, 12).scale(1, 1, 1);
+    drawSphere(sphereMat, g_dirtTex, [0,.5,1,1], 0.5, 50, true);
+
+    // 6. Light
+    if (g_lightCenterPosition[0] > 0 && g_lightCenterPosition[0] < 32 && g_lightCenterPosition[1] > 0 && g_lightCenterPosition[1] < 32 && g_lightCenterPosition[2] > 0 && g_lightCenterPosition[2] < 32) {
+        let lightMat = new Matrix4().translate(g_lightCenterPosition[0], g_lightCenterPosition[1], g_lightCenterPosition[2]).scale(0.2, 0.2, 0.2);
+        drawSphere(lightMat, g_dirtTex, [1, 1, 0, 1], 0.0, 1, false);
+    }
 }
 
 function setupCubeGeometry() {
     // Geometry Data
     // 24 vertices: x, y, z, u, v, nx, ny, nz — Phase 1 uses fake normal (1,1,0) everywhere
     const cubeGeometry = new Float32Array([
-      -0.5, -0.5,  0.5, 0.0, 0.0,  0, 0, 1,   0.5, -0.5,  0.5, 1.0, 0.0,  0, 0, 1,
-      0.5,  0.5,  0.5, 1.0, 1.0,  0, 0, 1,  -0.5,  0.5,  0.5, 0.0, 1.0,  0, 0, 1,
-      -0.5, -0.5, -0.5, 1.0, 0.0,  0, 0, -1,  -0.5,  0.5, -0.5, 1.0, 1.0,  0, 0, -1,
-      0.5,  0.5, -0.5, 0.0, 1.0,  0, 0, -1,   0.5, -0.5, -0.5, 0.0, 0.0,  0, 0, -1,
-      -0.5,  0.5, -0.5, 0.0, 1.0,  0, 1, 0,  -0.5,  0.5,  0.5, 0.0, 0.0,  0, 1, 0,
-      0.5,  0.5,  0.5, 1.0, 0.0,  0, 1, 0,   0.5,  0.5, -0.5, 1.0, 1.0,  0, 1, 0,
-      -0.5, -0.5, -0.5, 1.0, 1.0,  0, -1, 0,   0.5, -0.5, -0.5, 0.0, 1.0,  0, -1, 0,
-      0.5, -0.5,  0.5, 0.0, 0.0,  0, -1, 0,  -0.5, -0.5,  0.5, 1.0, 0.0,  0, -1, 0,
-      0.5, -0.5, -0.5, 1.0, 0.0,  1, 0, 0,   0.5,  0.5, -0.5, 1.0, 1.0,  1, 0, 0,
-      0.5,  0.5,  0.5, 0.0, 1.0,  1, 0, 0,   0.5, -0.5,  0.5, 0.0, 0.0,  1, 0, 0,
-      -0.5, -0.5, -0.5, 0.0, 0.0,  -1, 0, 0,  -0.5, -0.5,  0.5, 1.0, 0.0,  -1, 0, 0,
-      -0.5,  0.5,  0.5, 1.0, 1.0,  -1, 0, 0,  -0.5,  0.5, -0.5, 0.0, 1.0,  -1, 0, 0
+      -0.5, -0.5,  0.5, 0.0, 0.0,  0, 0, 1,
+      0.5, -0.5,  0.5, 1.0, 0.0,  0, 0, 1,
+      0.5,  0.5,  0.5, 1.0, 1.0,  0, 0, 1,
+      -0.5,  0.5,  0.5, 0.0, 1.0,  0, 0, 1,
+      -0.5, -0.5, -0.5, 1.0, 0.0,  0, 0, -1,
+      -0.5,  0.5, -0.5, 1.0, 1.0,  0, 0, -1,
+      0.5,  0.5, -0.5, 0.0, 1.0,  0, 0, -1,
+      0.5, -0.5, -0.5, 0.0, 0.0,  0, 0, -1,
+      -0.5,  0.5, -0.5, 0.0, 1.0,  0, 1, 0,
+      -0.5,  0.5,  0.5, 0.0, 0.0,  0, 1, 0,
+      0.5,  0.5,  0.5, 1.0, 0.0,  0, 1, 0,
+      0.5,  0.5, -0.5, 1.0, 1.0,  0, 1, 0,
+      -0.5, -0.5, -0.5, 1.0, 1.0,  0, -1, 0,
+      0.5, -0.5, -0.5, 0.0, 1.0,  0, -1, 0,
+      0.5, -0.5,  0.5, 0.0, 0.0,  0, -1, 0,
+      -0.5, -0.5,  0.5, 1.0, 0.0,  0, -1, 0,
+      0.5, -0.5, -0.5, 1.0, 0.0,  1, 0, 0,
+      0.5,  0.5, -0.5, 1.0, 1.0,  1, 0, 0,
+      0.5,  0.5,  0.5, 0.0, 1.0,  1, 0, 0,
+      0.5, -0.5,  0.5, 0.0, 0.0,  1, 0, 0,
+      -0.5, -0.5, -0.5, 0.0, 0.0,  -1, 0, 0,
+      -0.5, -0.5,  0.5, 1.0, 0.0,  -1, 0, 0,
+      -0.5,  0.5,  0.5, 1.0, 1.0,  -1, 0, 0,
+      -0.5,  0.5, -0.5, 0.0, 1.0,  -1, 0, 0
   ]);
     // 12 triangles (6 faces * 2 triangles) defined by 36 indices
     const cubeIndices = new Uint16Array([
@@ -343,15 +470,15 @@ function setupCubeGeometry() {
 }
 
 function setupSphereGeometry(nLat, nLon){
-    const nRows = nLon + 1;
-    const nCols = nLat + 1;
+    const nRows = nLat + 1;
+    const nCols = nLon + 1;
 
     const sphereGeometryArray = [];
     for (let iy = 0; iy < nRows; iy++) {
         const v = iy / nLat;
         const theta = v * Math.PI;
         for (let ix = 0; ix < nCols; ix++) {
-            const u = iy/nLon;
+            const u = ix / nLon;
             const phi = 2 * Math.PI * u;
 
             const x = Math.sin(theta) * Math.cos(phi);
@@ -363,10 +490,10 @@ function setupSphereGeometry(nLat, nLon){
     }
 
     const sphereIndiciesArray = [];
-    for (let iy = 0; iy < nLon; iy++) {
-        for (let ix = 0; ix < nLat; ix ++) {
-            const a = iy * nRows + ix;
-            const b = a + nRows;
+    for (let iy = 0; iy < nLat; iy++) {
+        for (let ix = 0; ix < nLon; ix++) {
+            const a = iy * nCols + ix;
+            const b = a + nCols;
             sphereIndiciesArray.push(a, b, a + 1);
             sphereIndiciesArray.push(b, b + 1, a + 1);
         }
@@ -392,6 +519,7 @@ function setupGeometry() {
     setupSphereGeometry(16, 16);
 }
 
+
 function main() {
     canvas = document.getElementById('webgl');
     gl = canvas.getContext('webgl');
@@ -403,10 +531,16 @@ function main() {
         u_ModelMatrix: gl.getUniformLocation(gl.program, 'u_ModelMatrix'), 
         u_ProjectionMatrix: gl.getUniformLocation(gl.program, 'u_ProjectionMatrix'), 
         u_ViewMatrix: gl.getUniformLocation(gl.program, 'u_ViewMatrix'), 
+        u_NormalMatrix: gl.getUniformLocation(gl.program, "u_NormalMatrix"),
         u_Sampler: gl.getUniformLocation(gl.program, "u_Sampler"), 
         u_Color: gl.getUniformLocation(gl.program, "u_Color"), 
         u_texColorWeight: gl.getUniformLocation(gl.program, "u_texColorWeight"),
-        u_ShowNormals: gl.getUniformLocation(gl.program, "u_ShowNormals")
+        u_ShowNormals: gl.getUniformLocation(gl.program, "u_ShowNormals"),
+        u_showDiffuse: gl.getUniformLocation(gl.program, "u_showDiffuse"),
+        u_CameraPosition: gl.getUniformLocation(gl.program, "u_CameraPosition"),
+        u_LightColor: gl.getUniformLocation(gl.program, "u_LightColor"),
+        u_LightPosition: gl.getUniformLocation(gl.program, "u_LightPosition"),
+        u_Shininess: gl.getUniformLocation(gl.program, "u_Shininess"),
     };
 
     setupGeometry();
@@ -417,6 +551,9 @@ function main() {
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255,255,255,255])); 
         return t; 
     })();
+    updateLightPositionX(0);
+    updateLightPositionY(2);
+    updateLightPositionZ(12);
 
     initMap();
     camera = new Camera(canvas);
@@ -426,6 +563,53 @@ function main() {
         gl.enable(gl.DEPTH_TEST);
         tick(); // THE ONLY TICK CALL
     });
+ 
+    function bindLightColorSliders() {
+        const lr = document.getElementById('lightR');
+        const lg = document.getElementById('lightG');
+        const lb = document.getElementById('lightB');
+        function upd() {
+            g_lightColor[0] = lr ? parseFloat(lr.value) : 1;
+            g_lightColor[1] = lg ? parseFloat(lg.value) : 1;
+            g_lightColor[2] = lb ? parseFloat(lb.value) : 1;
+
+            // Update the color picker value to reflect the sliders
+            const lightColorPicker = document.getElementById('light-color-picker');
+            if (lightColorPicker) {
+                lightColorPicker.value = `rgb(${g_lightColor[0] * 255}, ${g_lightColor[1] * 255}, ${g_lightColor[2] * 255})`;
+            }
+        }
+        if (lr) lr.addEventListener('input', upd);
+        if (lg) lg.addEventListener('input', upd);
+        if (lb) lb.addEventListener('input', upd);
+        upd();
+    }
+    bindLightColorSliders();
+
+    function bindLightColorPicker() {
+        const lightColorPicker = document.getElementById('light-color-picker');
+        if (lightColorPicker) {
+            lightColorPicker.addEventListener('input', (e) => {
+                const color = e.target.value; 
+                const hash =  color.substring(0, 1);
+                const r = parseInt(color.substring(1, 3), 16);                 // ff -> 255
+                const g = parseInt(color.substring(3, 5), 16);                 // ff -> 255
+                const b = parseInt(color.substring(5, 7), 16);  
+
+                g_lightColor[0] = r / 255;
+                g_lightColor[1] = g / 255;
+                g_lightColor[2] = b / 255;  
+
+                const lr = document.getElementById('lightR');
+                const lg = document.getElementById('lightG');
+                const lb = document.getElementById('lightB');   
+                if (lr) lr.value = g_lightColor[0];
+                if (lg) lg.value = g_lightColor[1];
+                if (lb) lb.value = g_lightColor[2];
+            });
+        }
+    }    
+    bindLightColorPicker();
     
     canvas.onmousedown = (e) => { 
         if (e.button === 0) { 
