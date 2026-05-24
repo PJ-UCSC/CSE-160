@@ -49,6 +49,37 @@ class Camera {
     moveLeft() { let f = new Vector3(); f.set(this.at); f.sub(this.eye); let s = Vector3.cross(this.up, f); s.normalize(); s.mul(this.speed); this.#tryMove(s); }
     moveRight() { let f = new Vector3(); f.set(this.at); f.sub(this.eye); let s = Vector3.cross(f, this.up); s.normalize(); s.mul(this.speed); this.#tryMove(s); }
     
+    panUp(alpha = 4) {
+        // 1. Get the current forward direction
+        let f = new Vector3(); 
+        f.set(this.at); 
+        f.sub(this.eye);
+        
+        // 2. Get the "Right" vector using Cross Product
+        // We use a temporary Vector3 for the cross product to be safe
+        let r = Vector3.cross(f, this.up);
+        r.normalize();
+
+        // 3. Rotate the forward vector around the Right vector
+        let rotMatrix = new Matrix4();
+        rotMatrix.setRotate(alpha, r.elements[0], r.elements[1], r.elements[2]);
+        
+        // 4. Calculate the new direction
+        let f_prime = rotMatrix.multiplyVector3(f);
+
+        // 5. SAFETY GUARD: Prevent flipping upside down
+        // We check the Y component. If it's too high/low, we stop the rotation.
+        // Normalized Y should stay between -0.98 and 0.98
+        let tempF = new Vector3(f_prime.elements);
+        tempF.normalize();
+        if (Math.abs(tempF.elements[1]) < 0.98) {
+            this.at.set(this.eye);
+            this.at.add(f_prime);
+        }
+    }
+    panDown(alpha = 4) {
+        this.panUp(-alpha);
+    }
     panLeft(alpha = 4) {
         let f = new Vector3(); f.set(this.at); f.sub(this.eye);
         let rotMatrix = new Matrix4(); rotMatrix.setRotate(alpha, 0, 1, 0);
