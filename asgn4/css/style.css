@@ -1,0 +1,123 @@
+
+html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: black; }
+
+.overlay {
+    position: absolute; 
+    top: 0; left: 0;
+    width: 100vw; 
+    height: 100vh; 
+    background: rgba(0,0,0,0.85); 
+    color: #00ff00; 
+    display: flex;
+    flex-direction: column; 
+    justify-content: center; 
+    align-items: center; 
+    z-index: 10; 
+    text-align: center; 
+    font-family:  sans-serif;
+}
+
+#webgl { 
+    display: block; 
+    width: 100vw; 
+    height: 100vh; 
+    touch-action: none; 
+    background-color: black; 
+    cursor: crosshair;
+}
+
+#fps-counter {
+    position: absolute; 
+    top: 10px; 
+    left: 10px; 
+    color: yellow; 
+    font-family: monospace; 
+    font-size: 18px; 
+    text-shadow: 2px 2px black; 
+    z-index: 5;
+}
+
+#wave-display {
+    position: absolute; 
+    top: 10px; right: 10px; 
+    color: white; 
+    font-family: monospace; 
+    font-size: 20px; 
+    text-shadow: 2px 2px black;
+}
+
+#game-ui {
+    display: none;
+    position: fixed; left: 8px; top: 40px; z-index: 10;
+    background: rgba(0,0,0,0.55); 
+    padding: 10px 12px; 
+    border-radius: 8px;
+    font-family: system-ui, sans-serif; 
+    font-size: 12px; color: #ddd;
+    max-width: 320px;
+}
+
+.game-ui-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.game-ui-title {
+    font-weight: 600;
+    color: #fff;
+}
+
+.game-ui-minimize-btn {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid #666;
+    border-radius: 4px;
+    background: #333;
+    color: #ddd;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.game-ui-minimize-btn:hover {
+    background: #444;
+    color: #fff;
+}
+
+#game-ui.minimized {
+    padding-bottom: 10px;
+}
+
+#game-ui.minimized .game-ui-header {
+    margin-bottom: 0;
+}
+
+#game-ui.minimized #game-ui-body {
+    display: none;
+}
+
+#game-ui label { display: block; margin-top: 5px; }
+#game-ui input[type="range"] { width: 100%; }
+#game-ui button { margin-top: 8px; margin-right: 6px; cursor: pointer; padding: 6px 10px; }
+
+.caption {
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    text-align: center;
+    margin-top: 10px;
+}
+
+.slider {
+    height: 10px;
+    background: #ddd;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
+.slider-input {
+    width: 3em;
+    height: 10px;
+}

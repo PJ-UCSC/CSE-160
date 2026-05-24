@@ -1,64 +1,173 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <link rel="stylesheet" type="text/css" href="css/style.css">
 </head>
+
 <body onload="main()">
-    <div id="game-ui" style="position: relative; width: 600px; height: 600px; margin: auto;">
-        <canvas id="webgl" width="600" height="600" style="background-color: black; cursor: crosshair;"></canvas>
-
-        <!-- FPS Counter -->
-        <div id="fps-counter" style="position: absolute; top: 10px; left: 10px; color: yellow; font-family: monospace; font-size: 18px; text-shadow: 2px 2px black; z-index: 5;">FPS: 0</div>
-
+    <!-- Main Menu -->
+    <div id="main-menu" class="overlay">
+        <h1>MAIN MENU</h1>
+        <p>The zombies are attacking! Try to survive the three waves</p>
+        <button onclick="startGame()" style="padding: 10px 20px; cursor: pointer;">START GAME</button>
+    </div>
+    <!-- Game Over Overlay -->
+    <div id="game-over" class="overlay" style="display: none;">
+        <h1 style="font-size: 50px;">GAME OVER</h1>
+        <button onclick="location.reload()" style="padding: 10px 20px; cursor: pointer;">RESPAWN</button>
+    </div>
+    <!-- Congratulations Overlay -->
+    <div id="congrats" class="overlay" style="display: none;">
+        <h1>VICTORY!</h1>
+        <p>The zombies have been defeated.</p>
+        <button onclick="restartWaves()" style="margin-bottom: 10px; width: 150px; cursor: pointer;">RESTART
+            WAVES</button>
+        <button onclick="stayInWorld()" style="width: 150px; cursor: pointer;">STAY AND BUILD</button>
     </div>
 
-    <div class="caption">Z to place block, X deletes a block from the top of the stack</div>
-    <div class="caption">W is Up, A is Left, S is Down, D is Right</div>
-    <div class="caption">R pans up and F pans down</div>
-    <div class="caption">I loaded a houseplant into the world</div>
+    <canvas id="webgl"></canvas>
+    <!-- FPS Counter -->
+    <div id="fps-counter">FPS: 0</div>
+    <!-- Wave Counter -->
+    <div id="wave-display">WAVE: 1</div>
 
-    <div style="text-align: center; margin-top: 1.5em;">
-        <div>
-            <div>Light Position</div>
-            <div>
-                <label>X 
-                    <input type="range" id="lightX" min="0" max="31" step="1" value="0" onchange="updateLightPositionX(this.value)">
-                    <input type="number" id="lightX-input" onchange="updateLightPositionX(this.value)" style="cursor: pointer;" value="0">
-                </label>
-            </div>
-            <div>
-                <label>Y 
-                    <input type="range" id="lightY" min="0" max="3" step="1" value="0" onchange="updateLightPositionY(this.value)">
-                    <input type="number" id="lightY-input" onchange="updateLightPositionY(this.value)" style="cursor: pointer;" value="0">
-                </label>
-            </div>
-            <div>
-                <label>Z 
-                    <input type="range" id="lightZ" min="0" max="31" step="1" value="0" onchange="updateLightPositionZ(this.value)">
-                    <input type="number" id="lightZ-input" onchange="updateLightPositionZ(this.value)" style="cursor: pointer;" value="0">
-                </label>
-            </div>
+    <!-- Health Bar -->
+    <div
+        style="position: absolute; bottom: 20px; left: 20px; width: 200px; height: 20px; border: 2px solid white; background: #333;">
+        <div id="hp-bar" style="width: 100%; height: 100%; background: #ff0000; transition: width 0.2s;"></div>
+    </div>
+    <div id="game-ui">
+        <div class="game-ui-header">
+            <span class="game-ui-title">Controls</span>
+            <button type="button" id="game-ui-minimize-btn" class="game-ui-minimize-btn"
+                onclick="toggleGameUiMinimized()" title="Minimize">−</button>
         </div>
-        <div>
-            <label>R <input type="range" id="lightR" min="0" max="1" step="0.02" value="1"></label>
-            <label>G <input type="range" id="lightG" min="0" max="1" step="0.02" value="1"></label>
-            <label>B <input type="range" id="lightB" min="0" max="1" step="0.02" value="1"></label>
-            <input type="color" id="light-color-picker" value="#ffffff" onchange="updateLightColor(this.value)" style="cursor: pointer;">
-        </div>
-        <label>Spotlight Color: 
-            <input type="color" id="spot-color-picker" value="#ff0000" oninput="updateSpotlightColor(this.value)">
-        </label>
+        <div id="game-ui-body">
         <div style="text-align: center; margin-top: 1.5em;">
-            <button id="toggle-normals-btn" type="button" onclick="toggleShowNormals()" style="padding: 8px 16px; cursor: pointer;">Show Normals: OFF</button>
-            <button id="toggle-diffuse-btn" type="button" onclick="toggleShowDiffuse()" style="padding: 8px 16px; cursor: pointer;">Show Diffuse: ON</button>
+            <button id="toggle-normals-btn" type="button" onclick="toggleShowNormals()"
+                style="padding: 8px 16px; cursor: pointer;">Normals: OFF</button>
+            <button id="toggle-lighting-btn" type="button" onclick="toggleShowLighting()"
+                style="padding: 8px 16px; cursor: pointer;">Lighting: ON</button>
         </div>
-        <button id="toggle-spotlight-btn" type="button" onclick="toggleSpotlight()">Spotlight: ON</button>
-        <script>
-            function toggleSpotlight() {
-                g_spotlightOn = !g_spotlightOn;
-                document.getElementById('toggle-spotlight-btn').textContent = g_spotlightOn ? 'Spotlight: ON' : 'Spotlight: OFF';
-            }
-        </script>
+
+        <div>
+            <label>
+                <input type="checkbox" id="point-light-checkbox" onchange="togglePointLight()" checked>
+                Point (diffuse) light
+            </label>
+        </div>
+        <div>
+            <label>
+                <input type="checkbox" id="spotlight-checkbox" onchange="toggleSpotLight()" checked>
+                Spotlight
+            </label>
+        </div>
+        <div style="text-align: center; margin-top: 1.5em;">
+            <div>
+                <div>Light Position</div>
+                <label>
+                    <input type="checkbox" id="light-position-checkbox" onchange="toggleAnimateLightPosition()" checked>
+                    animate light position
+                </label>
+                <div>
+                    <label>X
+                        <input type="range" id="lightX" class="slider"
+                            min="0" max="31" step="1" value="0"
+                            onchange="updateLightPositionX(this.value)"
+                        >
+                        <input type="number" id="lightX-input" 
+                            class="slider-input"
+                            onchange="updateLightPositionX(this.value)"
+                            style="cursor: pointer;" value="0">
+                    </label>
+                </div>
+                <div>
+                    <label>Y
+                        <input type="range" id="lightY" class="slider"
+                            min="0" max="3" step="1" value="0"
+                            onchange="updateLightPositionY(this.value)">
+                        <input type="number" id="lightY-input" 
+                            class="slider-input"
+                            onchange="updateLightPositionY(this.value)"
+                            style="cursor: pointer;" value="0">
+                    </label>
+                </div>
+                <div>
+                    <label>Z
+                        <input type="range" id="lightZ" class="slider"
+                            min="0" max="31" step="1" value="0"
+                            onchange="updateLightPositionZ(this.value)">
+                        <input type="number" id="lightZ-input" 
+                            class="slider-input"
+                            onchange="updateLightPositionZ(this.value)"
+                            style="cursor: pointer;" value="0">
+                    </label>
+                </div>
+            </div>
+            <div>Light Colors</div>
+            <div>
+                <div>
+                    <input type="color" id="light-color-picker" value="#808080"
+                        oninput="updateLightColor(this.value)"
+                        onchange="updateLightColor(this.value)"
+                        style="cursor: pointer;">
+                </div>
+                <div>
+                    <div class="slider-container">
+                        <label>R
+                            <input type="range" id="lightR" class="slider"
+                                min="0" max="255" step="1" value="128"
+                                oninput="updateLightColorR(this.value)"
+                                onchange="updateLightColorR(this.value)"
+                            >
+                            <input type="number" id="lightR-input"
+                                class="slider-input"
+                                min="0" max="255" step="1"
+                                oninput="updateLightColorR(this.value)"
+                                onchange="updateLightColorR(this.value)"
+                                style="cursor: pointer;" value="128">
+                        </label>
+                    </div>
+                    <div class="slider-container">
+                        <label>G
+                            <input type="range" id="lightG" class="slider"
+                                min="0" max="255" step="1" value="128"
+                                oninput="updateLightColorG(this.value)"
+                                onchange="updateLightColorG(this.value)"
+                            >
+                            <input type="number" id="lightG-input"
+                                class="slider-input"
+                                min="0" max="255" step="1"
+                                oninput="updateLightColorG(this.value)"
+                                onchange="updateLightColorG(this.value)"
+                                style="cursor: pointer;" value="128">
+                        </label>
+                    </div>
+                    <div class="slider-container">
+                        <label>B
+                            <input type="range" id="lightB" class="slider"
+                                min="0" max="255" step="1" value="128"
+                                oninput="updateLightColorB(this.value)"
+                                onchange="updateLightColorB(this.value)"
+                            >
+                            <input type="number" id="lightB-input"
+                                class="slider-input"
+                                min="0" max="255" step="1"
+                                oninput="updateLightColorB(this.value)"
+                                onchange="updateLightColorB(this.value)"
+                                style="cursor: pointer;" value="128">
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="caption">Z to place block, X deletes a block from the top of the stack</div>
+            <div class="caption">W is Up, A is Left, S is Down, D is Right</div>
+            <div class="caption">Left Click attacks zombies</div>
+            <div class="caption">A house plant model has been placed in the center to demonstrate the OBJ Loader</div>
+        </div>
+        </div>
     </div>
 
     <!-- Load Libraries -->
@@ -66,8 +175,9 @@
     <script src="lib/webgl-debug.js"></script>
     <script src="lib/cuon-utils.js"></script>
     <script src="lib/cuon-matrix.js"></script>
-    <script src="js/camera.js"></script>
     <script src="js/model.js"></script>
+    <script src="js/camera.js"></script>
     <script src="js/script.js"></script>
 </body>
+
 </html>

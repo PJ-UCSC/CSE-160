@@ -88,10 +88,13 @@ class Model {
         gl.uniformMatrix4fv(shader_vars.u_ModelMatrix, false, matrix.elements);
         gl.uniformMatrix3fv(shader_vars.u_NormalMatrix, false, getNormalMatrix(matrix));
         gl.uniform4f(shader_vars.u_Color, color[0], color[1], color[2], color[3]);
-        gl.uniform1f(shader_vars.u_texColorWeight, 0.0); 
+        gl.uniform1f(shader_vars.u_texColorWeight, 0.0); // OBJ uses solid color
         gl.uniform1f(shader_vars.u_Shininess, 20.0);
+        
+        // Match the new names in script.js
         gl.uniform1f(shader_vars.u_ShowNormals, g_showNormals ? 1.0 : 0.0);
-        gl.uniform1f(shader_vars.u_showDiffuse, g_showDiffuse ? 1.0 : 0.0);
+        gl.uniform1f(shader_vars.u_ShowLighting, g_showLighting ? 1.0 : 0.0);
+        gl.uniform1f(shader_vars.u_Unlit, 0.0); 
 
         // 1. Position
         gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
@@ -103,9 +106,7 @@ class Model {
         gl.vertexAttribPointer(shader_vars.a_Normal, 3, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(shader_vars.a_Normal);
 
-        // 3. Texture Coordinate (IMPORTANT FIX)
-        // We disable the array so it doesn't try to read from a buffer, 
-        // and provide a constant default value of (0,0)
+        // 3. Texture Coordinate - Disable for OBJ and set default
         gl.disableVertexAttribArray(shader_vars.a_TextureCoordinate);
         gl.vertexAttrib2f(shader_vars.a_TextureCoordinate, 0.0, 0.0);
 
