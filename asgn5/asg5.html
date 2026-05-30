@@ -1,21 +1,297 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Assignment 5</title>
-    <link rel="stylesheet" href="/css/styles.css">
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.module.js",
-                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.184.0/examples/jsm/"
-            }
-        }
-    </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Campfire Scene — CSE 160 Assignment 5</title>
+  <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
-    <canvas id="main-scene"></canvas>
-    <script type="module" src="/js/script.js"></script>
+  <div id="overlay">
+    <h1>Campfire at Dusk</h1>
+    <p>Loading scene…</p>
+    <div id="camera-info" aria-live="polite">
+      <div class="camera-info-row">
+        <span class="camera-info-label">Position</span>
+        <span id="cam-pos" class="camera-info-value">—</span>
+      </div>
+      <div class="camera-info-row">
+        <span class="camera-info-label">Look at</span>
+        <span id="cam-lookat" class="camera-info-value">—</span>
+      </div>
+      <div class="camera-info-row">
+        <span class="camera-info-label">FOV</span>
+        <span id="cam-fov" class="camera-info-value">—</span>
+      </div>
+    </div>
+  </div>
+  <div id="error" hidden></div>
+  <aside id="lights-panel" class="scene-panel" aria-label="Scene controls">
+    <header class="panel-header">
+      <span class="panel-title">Scene controls</span>
+      <button
+        type="button"
+        id="panel-collapse"
+        class="panel-collapse-btn"
+        aria-expanded="true"
+        aria-controls="panel-body"
+        title="Collapse panel"
+      >
+        <span class="panel-collapse-icon" aria-hidden="true"></span>
+      </button>
+    </header>
+
+    <div id="panel-body" class="panel-body">
+      <details class="panel-section panel-section--flat" open>
+        <summary class="panel-section-summary">Time of day</summary>
+        <div class="panel-section-body">
+          <div class="day-night-switch" role="group" aria-label="Day or night">
+            <button type="button" id="btn-day" class="time-btn">Day</button>
+            <button type="button" id="btn-night" class="time-btn is-active">Night</button>
+          </div>
+        </div>
+      </details>
+
+      <div class="panel-columns">
+        <div class="panel-col panel-col-main">
+          <details class="panel-section" open>
+            <summary class="panel-section-summary">Movement</summary>
+            <div class="panel-section-body">
+              <div class="light-control movement-control">
+                <label class="light-slider">
+                  <span class="light-slider-label">Walk speed</span>
+                  <input type="range" id="move-speed" min="0.25" max="2.5" step="0.05" value="1" />
+                  <output id="move-speed-val" for="move-speed">1.00×</output>
+                </label>
+                <label class="light-slider">
+                  <span class="light-slider-label">Eye height</span>
+                  <input type="range" id="eye-height" min="1" max="50" step="0.1" value="2.8" />
+                  <output id="eye-height-val" for="eye-height">2.8</output>
+                </label>
+                <label class="light-slider">
+                  <span class="light-slider-label">Head tilt (up/down)</span>
+                  <input type="range" id="look-at-y" min="-12" max="12" step="0.2" value="0" />
+                  <output id="look-at-y-val" for="look-at-y">0.0</output>
+                </label>
+                <label class="light-slider">
+                  <span class="light-slider-label">Fly up / down speed</span>
+                  <input type="range" id="vertical-speed" min="0.25" max="2.5" step="0.05" value="1" />
+                  <output id="vertical-speed-val" for="vertical-speed">1.00×</output>
+                </label>
+              </div>
+            </div>
+          </details>
+
+          <details class="panel-section" open>
+            <summary class="panel-section-summary">Lights</summary>
+            <div class="panel-section-body">
+              <div class="light-control" id="light-control-sun">
+                <label class="light-toggle">
+                  <input type="checkbox" id="light-sun" />
+                  <span>Sunlight <em>directional</em></span>
+                </label>
+                <label class="light-slider">
+                  <span class="light-slider-label">Intensity</span>
+                  <input type="range" id="intensity-sun" min="0" max="3" step="0.05" value="1.4" />
+                  <output id="intensity-sun-val" for="intensity-sun">1.4</output>
+                </label>
+              </div>
+
+              <div class="light-control" id="light-control-moon">
+                <label class="light-toggle">
+                  <input type="checkbox" id="light-moon" checked />
+                  <span>Moon <em>directional</em></span>
+                </label>
+                <label class="light-slider">
+                  <span class="light-slider-label">Intensity</span>
+                  <input type="range" id="intensity-moon" min="0" max="2" step="0.05" value="0.55" />
+                  <output id="intensity-moon-val" for="intensity-moon">0.55</output>
+                </label>
+              </div>
+
+              <div class="light-control">
+                <label class="light-toggle">
+                  <input type="checkbox" id="light-fire" checked />
+                  <span>Campfire <em>point</em></span>
+                </label>
+                <label class="light-slider">
+                  <span class="light-slider-label">Intensity</span>
+                  <input type="range" id="intensity-fire" min="0" max="6" step="0.1" value="2.4" />
+                  <output id="intensity-fire-val" for="intensity-fire">2.4</output>
+                </label>
+              </div>
+
+              <div class="light-control">
+                <label class="light-toggle">
+                  <input type="checkbox" id="light-fill" checked />
+                  <span>Ambient <em>hemisphere</em></span>
+                </label>
+                <label class="light-slider">
+                  <span class="light-slider-label">Intensity</span>
+                  <input type="range" id="intensity-fill" min="0" max="2" step="0.05" value="0.5" />
+                  <output id="intensity-fill-val" for="intensity-fill">0.5</output>
+                </label>
+              </div>
+
+              <div class="light-control">
+                <label class="light-toggle">
+                  <input type="checkbox" id="light-camera" checked />
+                  <span>Flash light <em>spotlight</em></span>
+                </label>
+                <label class="light-slider">
+                  <span class="light-slider-label">Intensity</span>
+                  <input type="range" id="intensity-spot" min="0" max="10" step="0.1" value="4.5" />
+                  <output id="intensity-spot-val" for="intensity-spot">4.5</output>
+                </label>
+              </div>
+            </div>
+          </details>
+
+          <details class="panel-section" open>
+            <summary class="panel-section-summary">Atmosphere</summary>
+            <div class="panel-section-body">
+              <div class="light-control">
+                <label class="light-slider">
+                  <span class="light-slider-label">Fog density</span>
+                  <input type="range" id="fog-density" min="0" max="0.06" step="0.001" value="0.022" />
+                  <output id="fog-density-val" for="fog-density">0.022</output>
+                </label>
+                <label class="light-slider">
+                  <span class="light-slider-label">Fog strength</span>
+                  <input type="range" id="fog-strength" min="0" max="1" step="0.02" value="0.92" />
+                  <output id="fog-strength-val" for="fog-strength">0.92</output>
+                </label>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <div class="panel-col panel-col-particles">
+          <h2 class="panel-col-heading">Campfire particles</h2>
+
+          <details class="panel-section panel-section--nested" open>
+            <summary class="panel-section-summary">Fire core</summary>
+            <div class="panel-section-body">
+              <div class="light-control particle-control">
+                <label class="light-toggle">
+                  <input type="checkbox" id="particle-fire" checked />
+                  <span>Enabled</span>
+                </label>
+                <label class="light-slider">
+                  <span class="light-slider-label">Speed</span>
+                  <input type="range" id="fire-speed" min="0.25" max="2" step="0.05" value="1" />
+                  <output id="fire-speed-val" for="fire-speed">1.00×</output>
+                </label>
+                <label class="light-slider">
+                  <span class="light-slider-label">Size</span>
+                  <input type="range" id="fire-size" min="0.25" max="2" step="0.05" value="1" />
+                  <output id="fire-size-val" for="fire-size">1.00×</output>
+                </label>
+                <label class="light-slider">
+                  <span class="light-slider-label">Opacity</span>
+                  <input type="range" id="fire-opacity" min="0" max="2" step="0.05" value="1" />
+                  <output id="fire-opacity-val" for="fire-opacity">1.00×</output>
+                </label>
+                <label class="light-slider">
+                  <span class="light-slider-label">Emitter radius</span>
+                  <input type="range" id="fire-radius" min="0.25" max="2.5" step="0.05" value="1" />
+                  <output id="fire-radius-val" for="fire-radius">1.00×</output>
+                </label>
+                <label class="light-slider">
+                  <span class="light-slider-label">Density</span>
+                  <input type="range" id="fire-density" min="0.1" max="1" step="0.05" value="0.3" />
+                  <output id="fire-density-val" for="fire-density">30%</output>
+                </label>
+              </div>
+            </div>
+          </details>
+
+          <details class="panel-section panel-section--nested" open>
+            <summary class="panel-section-summary">Fire embers</summary>
+            <div class="panel-section-body">
+              <div class="light-control particle-control">
+                <label class="light-toggle">
+                  <input type="checkbox" id="particle-embers" checked />
+                  <span>Enabled</span>
+                </label>
+                <label class="light-slider">
+                  <span class="light-slider-label">Speed</span>
+                  <input type="range" id="embers-speed" min="0.25" max="2" step="0.05" value="1" />
+                  <output id="embers-speed-val" for="embers-speed">1.00×</output>
+                </label>
+                <label class="light-slider">
+                  <span class="light-slider-label">Size</span>
+                  <input type="range" id="embers-size" min="0.25" max="2" step="0.05" value="1" />
+                  <output id="embers-size-val" for="embers-size">1.00×</output>
+                </label>
+                <label class="light-slider">
+                  <span class="light-slider-label">Opacity</span>
+                  <input type="range" id="embers-opacity" min="0" max="2" step="0.05" value="1" />
+                  <output id="embers-opacity-val" for="embers-opacity">1.00×</output>
+                </label>
+                <label class="light-slider">
+                  <span class="light-slider-label">Emitter radius</span>
+                  <input type="range" id="embers-radius" min="0.25" max="2.5" step="0.05" value="1" />
+                  <output id="embers-radius-val" for="embers-radius">1.00×</output>
+                </label>
+                <label class="light-slider">
+                  <span class="light-slider-label">Density</span>
+                  <input type="range" id="embers-density" min="0.1" max="1" step="0.05" value="0.3" />
+                  <output id="embers-density-val" for="embers-density">30%</output>
+                </label>
+              </div>
+            </div>
+          </details>
+
+          <details class="panel-section panel-section--nested" open>
+            <summary class="panel-section-summary">Smoke</summary>
+            <div class="panel-section-body">
+              <div class="light-control particle-control">
+                <label class="light-toggle">
+                  <input type="checkbox" id="particle-smoke" checked />
+                  <span>Enabled</span>
+                </label>
+                <label class="light-slider">
+                  <span class="light-slider-label">Speed</span>
+                  <input type="range" id="smoke-speed" min="0.25" max="2" step="0.05" value="1" />
+                  <output id="smoke-speed-val" for="smoke-speed">1.00×</output>
+                </label>
+                <label class="light-slider">
+                  <span class="light-slider-label">Size</span>
+                  <input type="range" id="smoke-size" min="0.25" max="2" step="0.05" value="1" />
+                  <output id="smoke-size-val" for="smoke-size">1.00×</output>
+                </label>
+                <label class="light-slider">
+                  <span class="light-slider-label">Opacity</span>
+                  <input type="range" id="smoke-opacity" min="0" max="2" step="0.05" value="1" />
+                  <output id="smoke-opacity-val" for="smoke-opacity">1.00×</output>
+                </label>
+                <label class="light-slider">
+                  <span class="light-slider-label">Emitter radius</span>
+                  <input type="range" id="smoke-radius" min="0.25" max="2.5" step="0.05" value="1" />
+                  <output id="smoke-radius-val" for="smoke-radius">1.00×</output>
+                </label>
+                <label class="light-slider">
+                  <span class="light-slider-label">Density</span>
+                  <input type="range" id="smoke-density" min="0.1" max="1" step="0.05" value="0.3" />
+                  <output id="smoke-density-val" for="smoke-density">30%</output>
+                </label>
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </aside>
+  <canvas id="canvas"></canvas>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module" src="js/script.js"></script>
 </body>
 </html>
