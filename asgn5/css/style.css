@@ -379,6 +379,28 @@ body {
   pointer-events: none;
 }
 
+.sky-select {
+  grid-column: 1 / -1;
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 0.8rem;
+  color: #e8e4dc;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.sky-select:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.light-control:has(#sky-enabled:not(:checked)) .sky-select {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
 #water-panel {
   position: fixed;
   bottom: 16px;

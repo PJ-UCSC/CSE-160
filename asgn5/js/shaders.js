@@ -1,15 +1,3 @@
-/**
- * @file All GLSL for the scene (import vertex/fragment strings from here only).
- *
- * Contents:
- * - terrainVertexShader / terrainFragmentShader — height-based material blend
- * - fogVertexShader / fogFragmentShader — mountain billboard clouds
- * - waterVertexShader / waterFragmentShader — stream surface
- * - fireParticle* / smokeParticle* — campfire point sprites
- */
-
-/* --- Terrain (height-based material blend + multi-scale textures) --- */
-
 export const terrainVertexShader = /* glsl */ `
 uniform sampler2D uHeightMap;
 uniform float uMaxHeight;
@@ -253,8 +241,6 @@ void main() {
 }
 `;
 
-/* --- Mountain fog billboards (animated noise clouds) --- */
-
 export const fogVertexShader = /* glsl */ `
 varying vec2 vUv;
 varying vec3 vWorldPos;
@@ -315,8 +301,6 @@ void main() {
 }
 `;
 
-/* --- Stream water (turquoise flow shader) --- */
-
 export const waterVertexShader = /* glsl */ `
 varying vec2 vUv;
 varying vec3 vWorldPos;
@@ -363,8 +347,6 @@ void main() {
 }
 `;
 
-/* --- Campfire fire particles (additive point sprites) --- */
-
 export const fireParticleVertexShader = /* glsl */ `
 attribute float size;
 uniform float uPointSize;
@@ -400,8 +382,6 @@ void main() {
   gl_FragColor = vec4(col, alpha);
 }
 `;
-
-/* --- Campfire smoke particles --- */
 
 export const smokeParticleVertexShader = /* glsl */ `
 attribute float opacity;

@@ -1,103 +1,55 @@
-/**
- * @file Application entry — assembles the scene, wires UI, runs the render loop.
- * @see ./README.md for module map and coordinate conventions.
- */
 import * as THREE from "three";
 import { createTerrain, updateStreamWater } from "./terrain.js";
 import { createMountainFog } from "./mountainFog.js";
 import { Campfire } from "./campfire.js";
 import { addSceneProps } from "./sceneProps.js";
+import { scatterModels, bindScatterControls } from "./scatterModels.js";
 import { createLightingController } from "./lightingController.js";
 import { createSceneLights, createCameraSpotlight } from "./sceneLights.js";
 import { CameraController } from "./cameraController.js";
-import { bindRangeSlider, setRangeSliderValue } from "./uiBindings.js";
+import { bindRangeSlider } from "./uiBindings.js";
 import { bindCampfireControls } from "./campfireControls.js";
 import { initPanelUI } from "./panelUI.js";
-
-// ---------------------------------------------------------------------------
-// Bootstrap
-// ---------------------------------------------------------------------------
+import { createSkyController, bindSkyControls } from "./skybox.js";
 
 const overlay = document.getElementById("overlay");
 const errorBox = document.getElementById("error");
 
-function showError(message) {
+function showError(msg) {
   if (errorBox) {
     errorBox.hidden = false;
-    errorBox.textContent = message;
+    errorBox.textContent = msg;
   }
-  console.error(message);
+  console.error(msg);
 }
 
 if (location.protocol === "file:") {
   showError(
-    "This project must be served over HTTP (not opened as a file). Run: python -m http.server 8080 inside the web folder, then open http://localhost:8080"
+    "Open with a local server: cd web && python -m http.server 8080, then http://localhost:8080/asg5.html"
   );
 }
 
-// ---------------------------------------------------------------------------
-// Renderer & scene shell
-// ---------------------------------------------------------------------------
-
-function createRenderer(canvas) {
-  const renderer = new THREE.WebGLRenderer({
-    canvas,
-    antialias: true,
-    powerPreference: "high-performance",
-  });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.15;
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.debug.checkShaderErrors = true;
-  return renderer;
-}
-
-function createSceneShell() {
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x1a2540);
-  scene.fog = new THREE.FogExp2(0x3d4f6e, 0.022);
-  return scene;
-}
-
-function createCamera() {
-  return new THREE.PerspectiveCamera(
-    55,
-    window.innerWidth / window.innerHeight,
-    0.1,
-    250
-  );
-}
-
-// ---------------------------------------------------------------------------
-// UI — movement panel (camera only; lights/particles have own modules)
-// ---------------------------------------------------------------------------
-
-function bindCameraSliders(cameraCtrl) {
-  const eyeHeightSlider = document.getElementById("eye-height");
-  const eyeHeightLabel = document.getElementById("eye-height-val");
-  const formatEyeHeight = (v) => v.toFixed(1);
+function bindCamSliders(cam) {
+  const eyeSlider = document.getElementById("eye-height");
+  const eyeLabel = document.getElementById("eye-height-val");
 
   bindRangeSlider(
     document.getElementById("move-speed"),
     document.getElementById("move-speed-val"),
     {
-      onChange: (v) => cameraCtrl.setMoveSpeed(v),
+      onChange: (v) => cam.setMoveSpeed(v),
       format: (v) => `${v.toFixed(2)}×`,
     }
   );
-  bindRangeSlider(eyeHeightSlider, eyeHeightLabel, {
-    onChange: (v) => cameraCtrl.setEyeHeight(v),
-    format: formatEyeHeight,
+  bindRangeSlider(eyeSlider, eyeLabel, {
+    onChange: (v) => cam.setEyeHeight(v),
+    format: (v) => v.toFixed(1),
   });
   bindRangeSlider(
     document.getElementById("look-at-y"),
     document.getElementById("look-at-y-val"),
     {
-      onChange: (v) => cameraCtrl.setLookAtYOffset(v),
+      onChange: (v) => cam.setLookAtYOffset(v),
       format: (v) => v.toFixed(1),
     }
   );
@@ -105,69 +57,82 @@ function bindCameraSliders(cameraCtrl) {
     document.getElementById("vertical-speed"),
     document.getElementById("vertical-speed-val"),
     {
-      onChange: (v) => cameraCtrl.setVerticalSpeed(v),
+      onChange: (v) => cam.setVertSpeed(v),
       format: (v) => `${v.toFixed(2)}×`,
     }
   );
 
-  return (height) =>
-    setRangeSliderValue(
-      eyeHeightSlider,
-      eyeHeightLabel,
-      height,
-      formatEyeHeight
-    );
+  return () => {
+    if (!eyeSlider) return;
+    eyeSlider.value = cam.eyeHeight;
+    if (eyeLabel) eyeLabel.textContent = cam.eyeHeight.toFixed(1);
+  };
 }
-
-// ---------------------------------------------------------------------------
-// Main
-// ---------------------------------------------------------------------------
 
 function main() {
   const canvas = document.getElementById("canvas");
-  if (!canvas) throw new Error("Canvas element not found");
+  if (!canvas) throw new Error("no canvas");
 
-  const renderer = createRenderer(canvas);
-  const scene = createSceneShell();
-  const camera = createCamera();
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-  // World: terrain, water, distant fog
-  const terrainData = createTerrain();
-  terrainData.mesh.renderOrder = 0;
-  terrainData.water.renderOrder = 0;
-  scene.add(terrainData.mesh, terrainData.water);
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x1a2540);
+  scene.fog = new THREE.FogExp2(0x3d4f6e, 0.022);
 
-  const mountainFog = createMountainFog();
-  scene.add(mountainFog);
+  const sky = createSkyController(scene, renderer);
 
-  // Camp area content
-  const campWorld = terrainData.campWorld.clone();
-  campWorld.y += 0.05;
+  const camera = new THREE.PerspectiveCamera(
+    55,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    250
+  );
 
-  const campfire = new Campfire(campWorld);
+  const terrain = createTerrain();
+  terrain.mesh.renderOrder = 0;
+  terrain.water.renderOrder = 0;
+  scene.add(terrain.mesh, terrain.water);
+
+  const mtFog = createMountainFog();
+  scene.add(mtFog);
+
+  const campPos = terrain.campWorld.clone();
+  campPos.y += 0.05;
+
+  const campfire = new Campfire(campPos);
   scene.add(campfire.group);
   bindCampfireControls(campfire);
   initPanelUI();
-  addSceneProps(scene, campWorld, terrainData.heights, terrainData.size);
+  addSceneProps(scene, campPos, terrain.heights, terrain.size);
+  scatterModels(scene, terrain.heights, terrain.size, campPos)
+    .then(bindScatterControls)
+    .catch((err) => {
+      console.warn("model scatter failed:", err);
+    });
 
-  // Lighting (Three.js lights + terrain shader uniforms + UI)
   const lights = createSceneLights(scene);
   const lighting = createLightingController({
     scene,
     renderer,
     overlay,
-    terrainUniforms: terrainData.material.uniforms,
-    mountainFog,
+    terrainUniforms: terrain.material.uniforms,
+    mountainFog: mtFog,
     lights,
+    onPresetBackground: (hex) => sky.setFallback(hex),
   });
 
-  // Camera — use setSpawnView / setSpawn; do not set camera.position directly
-  const cameraCtrl = new CameraController(camera, terrainData, canvas);
-  cameraCtrl.setSpawnView(
-    new THREE.Vector3(-6, 5, 15),
-    new THREE.Vector3(3, 0, 6)
-  );
-  const syncEyeHeightSlider = bindCameraSliders(cameraCtrl);
+  bindSkyControls(sky);
+
+  const cam = new CameraController(camera, terrain, canvas);
+  cam.setSpawnView(new THREE.Vector3(-6, 5, 15), new THREE.Vector3(3, 0, 6));
+  const syncEyeSlider = bindCamSliders(cam);
 
   const camPosEl = document.getElementById("cam-pos");
   const camLookEl = document.getElementById("cam-lookat");
@@ -188,7 +153,6 @@ function main() {
     new THREE.Vector3()
   );
 
-  // Input
   const keys = {};
   window.addEventListener("keydown", (e) => {
     keys[e.code] = true;
@@ -197,46 +161,43 @@ function main() {
     keys[e.code] = false;
   });
 
-  // Reused vectors (avoid per-frame allocations)
-  const fireWorldPos = new THREE.Vector3();
-  const sunLightDir = new THREE.Vector3();
-  const moonLightDir = new THREE.Vector3();
+  const firePos = new THREE.Vector3();
+  const sunDir = new THREE.Vector3();
+  const moonDir = new THREE.Vector3();
   const spotPos = new THREE.Vector3();
   const spotDir = new THREE.Vector3();
   const spotTarget = new THREE.Vector3();
 
   const clock = new THREE.Clock();
-  let fireFlicker = 0;
+  let flickerT = 0;
 
   function animate() {
     requestAnimationFrame(animate);
     const dt = Math.min(clock.getDelta(), 0.05);
-    const elapsed = clock.getElapsedTime();
+    const t = clock.getElapsedTime();
 
     campfire.update(dt);
 
-    fireFlicker += dt * 9;
+    flickerT += dt * 9;
     const flicker =
-      0.85 + Math.sin(fireFlicker) * 0.12 + Math.sin(fireFlicker * 2.7) * 0.08;
+      0.85 + Math.sin(flickerT) * 0.12 + Math.sin(flickerT * 2.7) * 0.08;
 
     campfire.group.updateMatrixWorld();
-    fireWorldPos.setFromMatrixPosition(campfire.group.matrixWorld);
-    fireWorldPos.y += 0.6;
-    lighting.updateFireLight(lights.fire, fireWorldPos, flicker);
+    firePos.setFromMatrixPosition(campfire.group.matrixWorld);
+    firePos.y += 0.6;
+    lighting.updateFireLight(lights.fire, firePos, flicker);
 
-    terrainData.material.uniforms.uCameraPos.value.copy(camera.position);
-    lights.sun.getWorldDirection(sunLightDir);
-    lights.moon.getWorldDirection(moonLightDir);
-    lighting.updateTerrainLightDirs(sunLightDir, moonLightDir);
+    terrain.material.uniforms.uCameraPos.value.copy(camera.position);
+    lights.sun.getWorldDirection(sunDir);
+    lights.moon.getWorldDirection(moonDir);
+    lighting.updateTerrainLightDirs(sunDir, moonDir);
 
-    cameraCtrl.update(dt, keys);
-    if (cameraCtrl.eyeHeightDirty) {
-      syncEyeHeightSlider(cameraCtrl.eyeHeight);
-    }
-    cameraCtrl.updateHud(camPosEl, camLookEl, camFovEl);
+    cam.update(dt, keys);
+    if (cam.eyeDirty) syncEyeSlider();
+    cam.updateHud(camPosEl, camLookEl, camFovEl);
     lighting.updateCameraSpotlight(camera, spotPos, spotDir, spotTarget);
-    lighting.updateFogAnimation(elapsed);
-    updateStreamWater(terrainData.water, elapsed, sunLightDir, moonLightDir);
+    lighting.updateFogAnimation(t);
+    updateStreamWater(terrain.water, t, sunDir, moonDir);
 
     renderer.render(scene, camera);
   }
@@ -249,16 +210,14 @@ function main() {
 
   if (overlay) {
     overlay.querySelector("p").textContent =
-      "Left drag look · W/S move · Both mouse buttons forward · A/D turn · Q/E strafe · Space/Shift up/down · Scroll zoom";
+      "Drag to look · W/S move · Both mouse buttons = forward · A/D turn · Q/E strafe · Space/Shift height · Scroll FOV";
   }
 
   animate();
 }
 
 try {
-  if (location.protocol !== "file:") {
-    main();
-  }
+  if (location.protocol !== "file:") main();
 } catch (err) {
   showError(err?.message || String(err));
 }

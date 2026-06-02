@@ -1,9 +1,3 @@
-/**
- * @file Procedural canvas textures (terrain layers, bark, granite, water flow).
- *
- * Terrain tiling is applied in the terrain shader (world XZ); mesh UV repeat stays 1×1.
- * Props (trees, rocks) use higher repeat via `setRepeat`.
- */
 import * as THREE from "three";
 import { fbm } from "./noise.js";
 
@@ -28,10 +22,6 @@ function setRepeat(surface, repeatX, repeatY) {
   surface.normalMap.repeat.set(repeatX, repeatY);
 }
 
-/**
- * Build albedo (RGB + roughness in alpha) and normal map from a color callback.
- * colorFn(u, v, heightSample) => [r, g, b, roughness]
- */
 function buildSurface(size, colorFn, normalStrength = 2.5) {
   const { canvas: cAlbedo, ctx: ctxA } = makeCanvas(size);
   const { canvas: cNormal, ctx: ctxN } = makeCanvas(size);
@@ -77,7 +67,6 @@ function buildSurface(size, colorFn, normalStrength = 2.5) {
   };
 }
 
-/** Sand, grass, rock, snow — tiling handled in terrain shader (repeat 1×1 here). */
 export function createTerrainTextures() {
   const sand = buildSurface(TEX_SIZE, (u, v, h) => {
     const grain = fbm(u * 40, v * 40, 3);
@@ -106,7 +95,6 @@ export function createTerrainTextures() {
   return { sand, grass, rock, snow };
 }
 
-/** Speckled granite: quartz flecks, dark minerals, warm feldspar patches. */
 function graniteColorFn(u, v, h) {
   const grain = fbm(u * 32, v * 32, 4);
   const coarse = fbm(u * 11, v * 11, 3);
@@ -123,14 +111,12 @@ function graniteColorFn(u, v, h) {
   return [clamp(r), clamp(g), clamp(b), 0.78 + grain * 0.18];
 }
 
-/** Granite for scatter rocks — higher UV repeat on mesh geometry. */
 export function createGraniteTexture() {
   const granite = buildSurface(TEX_SIZE, graniteColorFn, 6.5);
   setRepeat(granite, 2.4, 2.4);
   return granite;
 }
 
-/** Bark for tree trunks — vertical grooves. */
 export function createBarkTexture() {
   const bark = buildSurface(
     TEX_SIZE,
@@ -148,7 +134,6 @@ export function createBarkTexture() {
   return bark;
 }
 
-/** Flow map for stream shader — high repeat along V (stream length). */
 export function createWaterTextures() {
   const water = buildSurface(
     TEX_SIZE,

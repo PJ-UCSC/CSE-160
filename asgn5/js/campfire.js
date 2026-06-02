@@ -1,19 +1,7 @@
-/**
- * @file Campfire scene object: log geometry + stacked particle layers.
- *
- * Particle simulation: `particleLayer.js`. UI: `campfireControls.js`.
- */
 import * as THREE from "three";
-import {
-  createFireParticleLayer,
-  createSmokeParticles,
-  RENDER_ORDER_EMBERS,
-  RENDER_ORDER_FIRE,
-  RENDER_ORDER_SMOKE,
-} from "./particleLayer.js";
+import { createFireParticleLayer, createSmokeParticles } from "./particleLayer.js";
 
-/** Max particles per layer (`count` in particleLayer); density slider uses a fraction. */
-const FIRE_LAYER_DEFAULTS = {
+const FIRE_OPTS = {
   embers: {
     count: 1024,
     pointSize: 108,
@@ -43,33 +31,30 @@ const FIRE_LAYER_DEFAULTS = {
 };
 
 export class Campfire {
-  /**
-   * @param {THREE.Vector3} position — world position of camp center (from heightmap).
-   */
-  constructor(position) {
+  constructor(pos) {
     this.group = new THREE.Group();
-    this.group.position.copy(position);
+    this.group.position.copy(pos);
 
     this._buildLogs();
-    this._addParticleLayers();
+    this._addParticles();
 
     this.group.userData.fireLightPosition = new THREE.Vector3(0, 0.6, 0);
   }
 
-  _addParticleLayers() {
-    this.fireEmbers = createFireParticleLayer(FIRE_LAYER_DEFAULTS.embers);
+  _addParticles() {
+    this.fireEmbers = createFireParticleLayer(FIRE_OPTS.embers);
     this.fireEmbers.system.position.y = 0.32;
-    this.fireEmbers.system.renderOrder = RENDER_ORDER_EMBERS;
+    this.fireEmbers.system.renderOrder = 100;
     this.group.add(this.fireEmbers.system);
 
-    this.fire = createFireParticleLayer(FIRE_LAYER_DEFAULTS.core);
+    this.fire = createFireParticleLayer(FIRE_OPTS.core);
     this.fire.system.position.y = 0.35;
-    this.fire.system.renderOrder = RENDER_ORDER_FIRE;
+    this.fire.system.renderOrder = 101;
     this.group.add(this.fire.system);
 
-    this.smoke = createSmokeParticles(FIRE_LAYER_DEFAULTS.smoke);
+    this.smoke = createSmokeParticles(FIRE_OPTS.smoke);
     this.smoke.system.position.y = 0.5;
-    this.smoke.system.renderOrder = RENDER_ORDER_SMOKE;
+    this.smoke.system.renderOrder = 102;
     this.group.add(this.smoke.system);
   }
 
@@ -78,18 +63,6 @@ export class Campfire {
       color: 0x3d2817,
       roughness: 0.9,
     });
-    const rockMat = new THREE.MeshStandardMaterial({
-      color: 0x4a4a4a,
-      roughness: 0.85,
-    });
-
-    const ring = new THREE.Mesh(
-      new THREE.TorusGeometry(0.55, 0.12, 8, 24),
-      rockMat
-    );
-    ring.rotation.x = Math.PI / 2;
-    ring.position.y = 0.06;
-    // Optional stone ring: this.group.add(ring);
 
     for (let i = 0; i < 5; i++) {
       const log = new THREE.Mesh(
@@ -104,7 +77,6 @@ export class Campfire {
     }
   }
 
-  /** Advance fire, ember, and smoke simulations. */
   update(dt) {
     this.fire.update(dt);
     this.fireEmbers.update(dt);

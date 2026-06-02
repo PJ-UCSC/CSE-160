@@ -1,13 +1,3 @@
-/**
- * @file GPU point-sprite particle systems for campfire fire and smoke.
- *
- * Each layer exposes:
- * - `system` — THREE.Points mesh
- * - `update(dt)` — simulation step
- * - `setEnabled`, `setSpeedMul`, `setSizeMul`, `setOpacityMul`, `setRadiusMul`, `setDensityMul`
- *
- * GLSL sources live in `shaders.js`.
- */
 import * as THREE from "three";
 import {
   fireParticleVertexShader,
@@ -16,21 +6,9 @@ import {
   smokeParticleFragmentShader,
 } from "./shaders.js";
 
-/** Nudge sprites toward camera in clip space (used when depthTest is enabled). */
-export const PARTICLE_DEPTH_BIAS = 0.02;
-
-/** Draw order: water/fog below, particles above (see terrain renderOrder). */
-export const RENDER_ORDER_EMBERS = 100;
-export const RENDER_ORDER_FIRE = 101;
-export const RENDER_ORDER_SMOKE = 102;
-
 const DEFAULT_DENSITY = 0.3;
 
-// ---------------------------------------------------------------------------
-// Runtime tuning (sliders in campfireControls.js)
-// ---------------------------------------------------------------------------
-
-function createParticleTuning(base) {
+function makeTuning(base) {
   return {
     enabled: true,
     speedMul: 1,
@@ -39,17 +17,11 @@ function createParticleTuning(base) {
     radiusMul: 1,
     densityMul: DEFAULT_DENSITY,
     base,
-    effectiveSpeed() {
-      return this.base.speedMul * this.speedMul;
-    },
-    effectiveSpread() {
-      return this.base.spreadMul * this.radiusMul;
-    },
   };
 }
 
-function activeParticleCount(count, densityMul) {
-  return Math.max(1, Math.round(count * densityMul));
+function activeCount(count, density) {
+  return Math.max(1, Math.round(count * density));
 }
 
 function applyFireUniforms(material, tuning) {
@@ -92,19 +64,15 @@ function makeParticleApi(system, tuning, applyUniforms, sim) {
       tuning.radiusMul = m;
     },
     setDensityMul(m) {
-      const prev = activeParticleCount(sim.count, tuning.densityMul);
+      const prev = activeCount(sim.count, tuning.densityMul);
       tuning.densityMul = THREE.MathUtils.clamp(m, 0.1, 1);
-      const next = activeParticleCount(sim.count, tuning.densityMul);
+      const next = activeCount(sim.count, tuning.densityMul);
       if (next > prev) {
         for (let i = prev; i < next; i++) sim.reset(i, true);
       }
     },
   };
 }
-
-// ---------------------------------------------------------------------------
-// Fire (additive sprites)
-// ---------------------------------------------------------------------------
 
 function resetFireParticle(
   i,
@@ -131,10 +99,6 @@ function resetFireParticle(
   };
 }
 
-/**
- * Additive fire/ember point layer.
- * @param {object} opts — count, pointSize, speedMul, lifeMul, spreadMul, alphaScale, warmth, drift, sizeShrink
- */
 export function createFireParticleLayer({
   count,
   pointSize,
@@ -151,7 +115,7 @@ export function createFireParticleLayer({
   const lifetimes = new Float32Array(count);
   const sizes = new Float32Array(count);
 
-  const tuning = createParticleTuning({
+  const tuning = makeTuning({
     pointSize,
     alphaScale,
     speedMul,
@@ -161,9 +125,9 @@ export function createFireParticleLayer({
 
   const reset = (i, initial) =>
     resetFireParticle(i, positions, velocities, lifetimes, sizes, initial, {
-      speedMul: tuning.effectiveSpeed(),
+      speedMul: tuning.base.speedMul * tuning.speedMul,
       lifeMul: tuning.base.lifeMul,
-      spreadMul: tuning.effectiveSpread(),
+      spreadMul: tuning.base.spreadMul * tuning.radiusMul,
     });
 
   for (let i = 0; i < count; i++) reset(i, true);
@@ -182,7 +146,7 @@ export function createFireParticleLayer({
       uAlphaScale: { value: alphaScale },
       uWarmth: { value: warmth },
       uSizeShrink: { value: sizeShrink },
-      uDepthBias: { value: PARTICLE_DEPTH_BIAS },
+      uDepthBias: { value: 0.02 },
     },
     vertexShader: fireParticleVertexShader,
     fragmentShader: fireParticleFragmentShader,
@@ -199,7 +163,7 @@ export function createFireParticleLayer({
       if (!tuning.enabled) return;
       driftTime += dt;
       const pos = geometry.attributes.position.array;
-      const active = activeParticleCount(count, tuning.densityMul);
+      const active = activeCount(count, tuning.densityMul);
       for (let i = 0; i < count; i++) {
         if (i >= active) {
           sizes[i] = 0;
@@ -231,10 +195,6 @@ export function createFireParticleLayer({
   };
 }
 
-// ---------------------------------------------------------------------------
-// Smoke (alpha-blended sprites)
-// ---------------------------------------------------------------------------
-
 function resetSmokeParticle(
   i,
   positions,
@@ -260,7 +220,6 @@ function resetSmokeParticle(
   };
 }
 
-/** Smoke plume layer (fixed pool size; density slider controls active count). */
 export function createSmokeParticles({
   count = 130,
   pointSize = 88,
@@ -272,7 +231,7 @@ export function createSmokeParticles({
   const lifetimes = new Float32Array(count);
   const opacities = new Float32Array(count);
 
-  const tuning = createParticleTuning({
+  const tuning = makeTuning({
     pointSize,
     alphaScale,
     speedMul: baseSpeed,
@@ -288,8 +247,8 @@ export function createSmokeParticles({
       lifetimes,
       opacities,
       initial,
-      tuning.effectiveSpeed(),
-      tuning.effectiveSpread()
+      tuning.base.speedMul * tuning.speedMul,
+      tuning.base.spreadMul * tuning.radiusMul
     );
 
   for (let i = 0; i < count; i++) reset(i, true);
@@ -320,7 +279,7 @@ export function createSmokeParticles({
     update(dt) {
       if (!tuning.enabled) return;
       const pos = geometry.attributes.position.array;
-      const active = activeParticleCount(count, tuning.densityMul);
+      const active = activeCount(count, tuning.densityMul);
       for (let i = 0; i < count; i++) {
         if (i >= active) {
           opacities[i] = 0;

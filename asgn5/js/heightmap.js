@@ -1,18 +1,11 @@
-/**
- * @file Procedural 256×256 height field: hills, mountains, flat camp, carved stream.
- *
- * Exports stream helpers (`streamCenterX`, `streamHalfWidth`) used by terrain water mesh.
- */
 import { smoothstep, fbm } from "./noise.js";
 
 const SIZE = 256;
 
-/** Sinusoidal stream centerline in normalized [0,1] space (X vs Z row). */
 export function streamCenterX(nz) {
   return 0.5 + Math.sin(nz * Math.PI * 2.3) * 0.12 + Math.sin(nz * Math.PI * 5.1) * 0.04;
 }
 
-/** Half-width in normalized X — must match carve in generateHeightMap. */
 export function streamHalfWidth(nz) {
   const streamWidth = 0.018 + nz * 0.008;
   return streamWidth * 0.85;

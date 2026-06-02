@@ -1,6 +1,3 @@
-/**
- * @file Scatter props: trees (bark), rocks (granite), tent, seating — snapped to terrain height.
- */
 import * as THREE from "three";
 import { sampleHeightAt } from "./terrain.js";
 import { createBarkTexture, createGraniteTexture } from "./proceduralTextures.js";

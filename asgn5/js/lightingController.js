@@ -1,9 +1,3 @@
-/**
- * @file Scene lighting UI: day/night presets, sliders, fog, terrain shader sync.
- *
- * Owns time-of-day state and pushes sun/moon/fill/fire intensities into both
- * THREE.Light objects and `terrainUniforms` (see lighting.js for defaults).
- */
 import { LIGHT_DEFAULTS, TIME_PRESETS } from "./lighting.js";
 import { bindRangeSlider, bindCheckbox } from "./uiBindings.js";
 import { updateMountainFog } from "./mountainFog.js";
@@ -18,6 +12,7 @@ export function createLightingController({
   terrainUniforms,
   mountainFog,
   lights,
+  onPresetBackground,
 }) {
   const { sun, moon, fire, fill, spotAngle, spotPenumbra } = lights;
   let cameraSpot = null;
@@ -170,7 +165,11 @@ export function createLightingController({
     document.getElementById("btn-day")?.classList.toggle("is-active", mode === "day");
     document.getElementById("btn-night")?.classList.toggle("is-active", mode === "night");
 
-    scene.background.setHex(preset.background);
+    if (onPresetBackground) {
+      onPresetBackground(preset.background);
+    } else if (scene.background?.isColor) {
+      scene.background.setHex(preset.background);
+    }
     renderer.toneMappingExposure = preset.exposure;
 
     Object.assign(fogSettings, {

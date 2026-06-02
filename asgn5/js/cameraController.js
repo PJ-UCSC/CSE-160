@@ -1,27 +1,13 @@
-/**
- * @file First-person camera: WASD movement, terrain height, mouse look, scroll zoom.
- *
- * The controller owns the THREE.Camera — set pose via `setSpawn` / `setSpawnView`,
- * not `camera.position` directly (see main.js).
- *
- * Pointer chords:
- * - Left drag — look
- * - Left + right buttons — move forward (same as W)
- */
 import * as THREE from "three";
 import { sampleHeightAt } from "./terrain.js";
 
-// ---------------------------------------------------------------------------
-// Tuning constants
-// ---------------------------------------------------------------------------
-
-const DEFAULT_EYE_HEIGHT = 2.8;
-const EYE_HEIGHT_MIN = 1.0;
-const EYE_HEIGHT_MAX = 50.0;
-const MOVE_ACCEL_BASE = 34;
-const VERTICAL_SPEED_BASE = 12;
-const MOVE_FRICTION = 16;
-const TURN_SPEED = 2.0;
+const EYE_H = 2.8;
+const EYE_MIN = 1;
+const EYE_MAX = 50;
+const MOVE_ACCEL = 34;
+const VERT_SPEED = 12;
+const FRICTION = 16;
+const TURN = 2;
 const MOUSE_SENS = 0.0022;
 const PITCH_MIN = -0.45;
 const PITCH_MAX = Math.PI / 2 - 0.04;
@@ -29,42 +15,38 @@ const LOOK_DIST = 14;
 const FOV_MIN = 30;
 const FOV_MAX = 155;
 
-// ---------------------------------------------------------------------------
-// CameraController
-// ---------------------------------------------------------------------------
-
 export class CameraController {
-  constructor(camera, terrainData, canvas) {
+  constructor(camera, terrain, canvas) {
     this.camera = camera;
-    this.terrainData = terrainData;
+    this.terrain = terrain;
     this.canvas = canvas;
 
-    this.eyeHeight = DEFAULT_EYE_HEIGHT;
-    this.verticalOffset = 0;
-    this.verticalSpeed = VERTICAL_SPEED_BASE;
-    this.eyeHeightDirty = false;
+    this.eyeHeight = EYE_H;
+    this.vertOff = 0;
+    this.vertSpeed = VERT_SPEED;
+    this.eyeDirty = false;
 
     this.player = {
       x: 0,
       z: 0,
-      y: DEFAULT_EYE_HEIGHT,
+      y: EYE_H,
       yaw: 0,
       pitch: 0.42,
       velX: 0,
       velZ: 0,
     };
 
-    this.moveAccel = MOVE_ACCEL_BASE;
-    this.lookAtYOffset = 0;
+    this.moveAccel = MOVE_ACCEL;
+    this.lookAtY = 0;
     this.dragging = false;
-    this.buttonsDown = { left: false, right: false };
+    this.btns = { left: false, right: false };
     this.lastX = 0;
     this.lastY = 0;
 
     this.target = new THREE.Vector3();
     this.lookDir = new THREE.Vector3();
-    this.moveForward = new THREE.Vector3();
-    this.moveRight = new THREE.Vector3();
+    this.fwd = new THREE.Vector3();
+    this.right = new THREE.Vector3();
     this.wishVel = new THREE.Vector3();
 
     this._onPointerDown = this._onPointerDown.bind(this);
@@ -79,26 +61,22 @@ export class CameraController {
     this._bindEvents();
   }
 
-  setMoveSpeed(multiplier) {
-    this.moveAccel =
-      MOVE_ACCEL_BASE * THREE.MathUtils.clamp(multiplier, 0.25, 2.5);
+  setMoveSpeed(mul) {
+    this.moveAccel = MOVE_ACCEL * THREE.MathUtils.clamp(mul, 0.25, 2.5);
   }
 
-  setEyeHeight(height) {
-    this.eyeHeight = THREE.MathUtils.clamp(height, EYE_HEIGHT_MIN, EYE_HEIGHT_MAX);
-    this.verticalOffset = 0;
+  setEyeHeight(h) {
+    this.eyeHeight = THREE.MathUtils.clamp(h, EYE_MIN, EYE_MAX);
+    this.vertOff = 0;
   }
 
-  setVerticalSpeed(multiplier) {
-    this.verticalSpeed =
-      VERTICAL_SPEED_BASE * THREE.MathUtils.clamp(multiplier, 0.25, 2.5);
+  setVertSpeed(mul) {
+    this.vertSpeed = VERT_SPEED * THREE.MathUtils.clamp(mul, 0.25, 2.5);
   }
 
-  setLookAtYOffset(offsetY) {
-    this.lookAtYOffset = THREE.MathUtils.clamp(offsetY, -12, 12);
+  setLookAtYOffset(y) {
+    this.lookAtY = THREE.MathUtils.clamp(y, -12, 12);
   }
-
-  // --- Spawn / initial view ---
 
   setSpawn(x, z, yaw = 0) {
     this.player.x = x;
@@ -106,39 +84,29 @@ export class CameraController {
     this.player.yaw = yaw;
     this.player.velX = 0;
     this.player.velZ = 0;
-    this.verticalOffset = 0;
-    const ground = sampleHeightAt(
-      x,
-      z,
-      this.terrainData.heights,
-      this.terrainData.size
-    );
+    this.vertOff = 0;
+    const ground = sampleHeightAt(x, z, this.terrain.heights, this.terrain.size);
     this.player.y = ground + this.eyeHeight;
     this.applyToCamera();
   }
 
-  /**
-   * Set start position and look-at target. Use this instead of camera.position / lookAt —
-   * CameraController owns the camera and applies player state every frame.
-   */
-  setSpawnView(position, lookAt) {
-    this.player.x = position.x;
-    this.player.z = position.z;
+  // set start pose from world position + look target (don't use camera.position directly)
+  setSpawnView(pos, lookAt) {
+    this.player.x = pos.x;
+    this.player.z = pos.z;
     this.player.velX = 0;
     this.player.velZ = 0;
 
     const ground = sampleHeightAt(
       this.player.x,
       this.player.z,
-      this.terrainData.heights,
-      this.terrainData.size
+      this.terrain.heights,
+      this.terrain.size
     );
-    this.verticalOffset = position.y - ground - this.eyeHeight;
-    this.player.y = position.y;
+    this.vertOff = pos.y - ground - this.eyeHeight;
+    this.player.y = pos.y;
 
-    const dir = this.lookDir
-      .subVectors(lookAt, position)
-      .normalize();
+    const dir = this.lookDir.subVectors(lookAt, pos).normalize();
     this.player.pitch = THREE.MathUtils.clamp(
       Math.asin(-dir.y),
       PITCH_MIN,
@@ -152,9 +120,6 @@ export class CameraController {
     this.applyToCamera();
   }
 
-  // --- Movement & orientation ---
-
-  /** Same heading the camera uses — projected onto XZ for walking. */
   updateMoveBasis() {
     const cp = Math.cos(this.player.pitch);
     const hx = -Math.sin(this.player.yaw);
@@ -162,13 +127,13 @@ export class CameraController {
 
     this.lookDir.set(hx * cp, -Math.sin(this.player.pitch), hz * cp);
 
-    this.moveForward.set(this.lookDir.x, 0, this.lookDir.z);
-    if (this.moveForward.lengthSq() < 1e-8) {
-      this.moveForward.set(hx, 0, hz);
+    this.fwd.set(this.lookDir.x, 0, this.lookDir.z);
+    if (this.fwd.lengthSq() < 1e-8) {
+      this.fwd.set(hx, 0, hz);
     }
-    this.moveForward.normalize();
+    this.fwd.normalize();
 
-    this.moveRight.set(-this.moveForward.z, 0, this.moveForward.x);
+    this.right.set(-this.fwd.z, 0, this.fwd.x);
   }
 
   applyLookDelta(dx, dy) {
@@ -186,23 +151,23 @@ export class CameraController {
     this.target
       .copy(this.camera.position)
       .addScaledVector(this.lookDir, LOOK_DIST);
-    this.target.y += this.lookAtYOffset;
+    this.target.y += this.lookAtY;
     this.camera.lookAt(this.target);
   }
 
   update(dt, keys) {
-    if (keys.KeyA) this.player.yaw += TURN_SPEED * dt;
-    if (keys.KeyD) this.player.yaw -= TURN_SPEED * dt;
+    if (keys.KeyA) this.player.yaw += TURN * dt;
+    if (keys.KeyD) this.player.yaw -= TURN * dt;
 
     this.updateMoveBasis();
 
     this.wishVel.set(0, 0, 0);
-    if (keys.KeyW || this.isBothMouseButtonsDown()) {
-      this.wishVel.add(this.moveForward);
+    if (keys.KeyW || this.bothBtns()) {
+      this.wishVel.add(this.fwd);
     }
-    if (keys.KeyS) this.wishVel.sub(this.moveForward);
-    if (keys.KeyQ) this.wishVel.sub(this.moveRight);
-    if (keys.KeyE) this.wishVel.add(this.moveRight);
+    if (keys.KeyS) this.wishVel.sub(this.fwd);
+    if (keys.KeyQ) this.wishVel.sub(this.right);
+    if (keys.KeyE) this.wishVel.add(this.right);
 
     if (this.wishVel.lengthSq() > 0) {
       this.wishVel.normalize().multiplyScalar(this.moveAccel);
@@ -210,58 +175,49 @@ export class CameraController {
       this.player.velZ += this.wishVel.z * dt;
     }
 
-    const friction = Math.exp(-MOVE_FRICTION * dt);
+    const friction = Math.exp(-FRICTION * dt);
     this.player.velX *= friction;
     this.player.velZ *= friction;
 
     this.player.x += this.player.velX * dt;
     this.player.z += this.player.velZ * dt;
 
-    this.eyeHeightDirty = false;
-    const verticalKey =
-      keys.Space || keys.ShiftLeft || keys.ShiftRight;
-    if (verticalKey) {
-      if (this.verticalOffset !== 0) {
+    this.eyeDirty = false;
+    if (keys.Space || keys.ShiftLeft || keys.ShiftRight) {
+      if (this.vertOff !== 0) {
         this.eyeHeight = THREE.MathUtils.clamp(
-          this.eyeHeight + this.verticalOffset,
-          EYE_HEIGHT_MIN,
-          EYE_HEIGHT_MAX
+          this.eyeHeight + this.vertOff,
+          EYE_MIN,
+          EYE_MAX
         );
-        this.verticalOffset = 0;
+        this.vertOff = 0;
       }
-      if (keys.Space) {
-        this.eyeHeight += this.verticalSpeed * dt;
-      }
+      if (keys.Space) this.eyeHeight += this.vertSpeed * dt;
       if (keys.ShiftLeft || keys.ShiftRight) {
-        this.eyeHeight -= this.verticalSpeed * dt;
+        this.eyeHeight -= this.vertSpeed * dt;
       }
-      this.eyeHeight = THREE.MathUtils.clamp(
-        this.eyeHeight,
-        EYE_HEIGHT_MIN,
-        EYE_HEIGHT_MAX
-      );
-      this.eyeHeightDirty = true;
+      this.eyeHeight = THREE.MathUtils.clamp(this.eyeHeight, EYE_MIN, EYE_MAX);
+      this.eyeDirty = true;
     }
 
     const ground = sampleHeightAt(
       this.player.x,
       this.player.z,
-      this.terrainData.heights,
-      this.terrainData.size
+      this.terrain.heights,
+      this.terrain.size
     );
-    const desiredY = ground + this.eyeHeight + this.verticalOffset;
-    const yBlend = 1 - Math.exp(-10 * dt);
-    this.player.y += (desiredY - this.player.y) * yBlend;
+    const wantY = ground + this.eyeHeight + this.vertOff;
+    const blend = 1 - Math.exp(-10 * dt);
+    this.player.y += (wantY - this.player.y) * blend;
 
     this.applyToCamera();
     return this.target;
   }
 
-  isBothMouseButtonsDown() {
-    return this.buttonsDown.left && this.buttonsDown.right;
+  bothBtns() {
+    return this.btns.left && this.btns.right;
   }
 
-  /** Write camera position, look-at target, and FOV to HUD elements (any may be omitted). */
   updateHud(posEl, lookEl, fovEl) {
     const fmt = (n) => n.toFixed(2);
     if (posEl) {
@@ -276,22 +232,6 @@ export class CameraController {
       fovEl.textContent = `${this.camera.fov.toFixed(1)}°`;
     }
   }
-
-  // --- Cleanup ---
-
-  dispose() {
-    this.canvas.removeEventListener("pointerdown", this._onPointerDown);
-    this.canvas.removeEventListener("pointerup", this._onPointerUp);
-    this.canvas.removeEventListener("pointercancel", this._onPointerCancel);
-    this.canvas.removeEventListener("pointermove", this._onPointerMove);
-    this.canvas.removeEventListener("contextmenu", this._onContextMenu);
-    window.removeEventListener("wheel", this._onWheel);
-    window.removeEventListener("pointerdown", this._onWindowPointer);
-    window.removeEventListener("pointerup", this._onWindowPointer);
-    window.removeEventListener("blur", this._onWindowBlur);
-  }
-
-  // --- Pointer input (canvas + window for reliable two-button chord) ---
 
   _bindEvents() {
     this.canvas.addEventListener("pointerdown", this._onPointerDown);
@@ -309,39 +249,37 @@ export class CameraController {
     return target === this.canvas || this.canvas.contains(target);
   }
 
-  /** Use e.buttons so chord clicks (both at once) register reliably. */
-  _syncPointerButtons(e) {
+  // e.buttons works when both mouse buttons pressed at once
+  _syncBtns(e) {
     if (e.pointerType !== "mouse") return;
-    this.buttonsDown.left = (e.buttons & 1) !== 0;
-    this.buttonsDown.right = (e.buttons & 2) !== 0;
+    this.btns.left = (e.buttons & 1) !== 0;
+    this.btns.right = (e.buttons & 2) !== 0;
   }
 
   _onWindowPointer(e) {
     if (e.pointerType !== "mouse" || !this._isCanvasPointerTarget(e.target)) return;
-    this._syncPointerButtons(e);
+    this._syncBtns(e);
     if (e.type === "pointerdown" && e.button === 2) {
       e.preventDefault();
     }
   }
 
   _onWindowBlur() {
-    this.buttonsDown.left = false;
-    this.buttonsDown.right = false;
+    this.btns.left = false;
+    this.btns.right = false;
     this.dragging = false;
   }
 
   _onPointerDown(e) {
     if (e.pointerType !== "mouse") return;
-    this._syncPointerButtons(e);
+    this._syncBtns(e);
     if (e.button === 0) {
       this.dragging = true;
       this.lastX = e.clientX;
       this.lastY = e.clientY;
       this.canvas.setPointerCapture(e.pointerId);
     }
-    if (e.button === 2) {
-      e.preventDefault();
-    }
+    if (e.button === 2) e.preventDefault();
   }
 
   _onPointerUp(e) {
@@ -352,10 +290,8 @@ export class CameraController {
         this.canvas.releasePointerCapture(e.pointerId);
       }
     }
-    if (e.button === 2) {
-      e.preventDefault();
-    }
-    this._syncPointerButtons(e);
+    if (e.button === 2) e.preventDefault();
+    this._syncBtns(e);
   }
 
   _onPointerCancel(e) {
@@ -363,11 +299,11 @@ export class CameraController {
     if (this.canvas.hasPointerCapture(e.pointerId)) {
       this.canvas.releasePointerCapture(e.pointerId);
     }
-    this._syncPointerButtons(e);
+    this._syncBtns(e);
   }
 
   _onPointerMove(e) {
-    this._syncPointerButtons(e);
+    this._syncBtns(e);
     if (!this.dragging) return;
     const dx = e.clientX - this.lastX;
     const dy = e.clientY - this.lastY;

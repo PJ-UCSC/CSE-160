@@ -1,10 +1,6 @@
-/**
- * @file Animated fog billboards at the mountain (+Z) end of the map.
- */
 import * as THREE from "three";
 import { fogVertexShader, fogFragmentShader } from "./shaders.js";
 
-/** Planes facing the camp; Z matches heightmap mountain zone (world space). */
 const LAYERS = [
   { z: -10, y: 5, w: 74, h: 16 },
   { z: -20, y: 11, w: 80, h: 22 },

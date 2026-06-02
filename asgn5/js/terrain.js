@@ -1,9 +1,3 @@
-/**
- * @file Terrain mesh, height sampling, stream water, and terrain shader uniforms.
- *
- * World Z is flipped relative to heightmap row index after `rotateX(-π/2)`;
- * use `normZToWorldZ` / `sampleHeightAt` rather than raw UV when placing objects.
- */
 import * as THREE from "three";
 import { generateHeightMap, streamCenterX, streamHalfWidth } from "./heightmap.js";
 import { createTerrainTextures, createWaterTextures } from "./proceduralTextures.js";
@@ -16,12 +10,10 @@ import {
 
 const TERRAIN_WORLD_SIZE = 80;
 const MAX_HEIGHT = 14;
-/** Must match height texture encoding in createTerrain */
 const HEIGHT_NORMALIZE = 1.1;
-/** Clearance above stream bed — avoids z-fight with terrain mesh */
 const WATER_LIFT = 0.14;
 
-/** World Z is flipped vs heightmap nz after PlaneGeometry.rotateX(-π/2). */
+// plane was rotated -90° on X so world Z runs opposite to heightmap row
 function normZToWorldZ(nz) {
   return (0.5 - nz) * TERRAIN_WORLD_SIZE;
 }
@@ -119,7 +111,6 @@ export function createTerrain() {
   };
 }
 
-/** Shader uniforms for terrain lighting, fog, textures, and height sampling. */
 function createTerrainUniforms(heightTexture, textures, size) {
   const spotAngle = Math.PI / 5;
   return {
@@ -249,7 +240,6 @@ function createStreamWater(heights, size) {
   return stream;
 }
 
-/** Animate water flow and sync light directions. */
 export function updateStreamWater(stream, time, sunDir, moonDir) {
   const mat = stream.userData.waterMaterial;
   if (!mat) return;

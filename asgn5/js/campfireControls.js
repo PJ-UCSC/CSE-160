@@ -1,26 +1,9 @@
-/**
- * @file Wires campfire particle UI (index.html) to particleLayer slider API.
- */
 import { bindRangeSlider, bindCheckbox } from "./uiBindings.js";
 
-function bindLayerControls(layer, ids) {
-  const {
-    toggle,
-    speed,
-    speedVal,
-    size,
-    sizeVal,
-    opacity,
-    opacityVal,
-    radius,
-    radiusVal,
-    density,
-    densityVal,
-  } = ids;
+function bindLayer(layer, ids) {
+  bindCheckbox(ids.toggle, (on) => layer.setEnabled(on));
 
-  bindCheckbox(toggle, (on) => layer.setEnabled(on));
-
-  bindRangeSlider(speed, speedVal, {
+  bindRangeSlider(ids.speed, ids.speedVal, {
     onChange: (v) => {
       const prev = layer.setSpeedMul(v);
       if (prev > 0 && layer.rescaleVelocity) {
@@ -30,30 +13,29 @@ function bindLayerControls(layer, ids) {
     format: (v) => `${v.toFixed(2)}×`,
   });
 
-  bindRangeSlider(size, sizeVal, {
+  bindRangeSlider(ids.size, ids.sizeVal, {
     onChange: (v) => layer.setSizeMul(v),
     format: (v) => `${v.toFixed(2)}×`,
   });
 
-  bindRangeSlider(opacity, opacityVal, {
+  bindRangeSlider(ids.opacity, ids.opacityVal, {
     onChange: (v) => layer.setOpacityMul(v),
     format: (v) => `${v.toFixed(2)}×`,
   });
 
-  bindRangeSlider(radius, radiusVal, {
+  bindRangeSlider(ids.radius, ids.radiusVal, {
     onChange: (v) => layer.setRadiusMul(v),
     format: (v) => `${v.toFixed(2)}×`,
   });
 
-  bindRangeSlider(density, densityVal, {
+  bindRangeSlider(ids.density, ids.densityVal, {
     onChange: (v) => layer.setDensityMul(v),
     format: (v) => `${Math.round(v * 100)}%`,
   });
 }
 
-/** Wire campfire particle toggles and sliders in the lights panel. */
 export function bindCampfireControls(campfire) {
-  bindLayerControls(campfire.fire, {
+  bindLayer(campfire.fire, {
     toggle: document.getElementById("particle-fire"),
     speed: document.getElementById("fire-speed"),
     speedVal: document.getElementById("fire-speed-val"),
@@ -67,7 +49,7 @@ export function bindCampfireControls(campfire) {
     densityVal: document.getElementById("fire-density-val"),
   });
 
-  bindLayerControls(campfire.fireEmbers, {
+  bindLayer(campfire.fireEmbers, {
     toggle: document.getElementById("particle-embers"),
     speed: document.getElementById("embers-speed"),
     speedVal: document.getElementById("embers-speed-val"),
@@ -81,7 +63,7 @@ export function bindCampfireControls(campfire) {
     densityVal: document.getElementById("embers-density-val"),
   });
 
-  bindLayerControls(campfire.smoke, {
+  bindLayer(campfire.smoke, {
     toggle: document.getElementById("particle-smoke"),
     speed: document.getElementById("smoke-speed"),
     speedVal: document.getElementById("smoke-speed-val"),

@@ -1,9 +1,3 @@
-/**
- * @file Lighting data only — default intensities and day/night preset colors.
- * Runtime wiring lives in `lightingController.js`.
- */
-
-/** Default slider values (night = scene default) */
 export const LIGHT_DEFAULTS = {
   sun: 1.4,
   moon: 0.55,

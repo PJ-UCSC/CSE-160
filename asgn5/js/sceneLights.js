@@ -1,12 +1,8 @@
-/**
- * @file Factory for sun, moon, fire point light, hemisphere fill, and camera spotlight.
- */
 import * as THREE from "three";
 
 const SHADOW_FRUSTUM = 40;
 const SHADOW_MAP_DIR = 2048;
 
-/** Configure orthographic shadow camera for directional lights. */
 export function configureDirectionalShadow(light, mapSize = SHADOW_MAP_DIR) {
   light.castShadow = true;
   light.shadow.mapSize.set(mapSize, mapSize);
@@ -18,7 +14,6 @@ export function configureDirectionalShadow(light, mapSize = SHADOW_MAP_DIR) {
   return light;
 }
 
-/** Directional light with shadow + target, added to scene. */
 export function addDirectionalLight(scene, color, intensity, position) {
   const light = new THREE.DirectionalLight(color, intensity);
   light.position.set(position.x, position.y, position.z);
@@ -28,7 +23,6 @@ export function addDirectionalLight(scene, color, intensity, position) {
   return light;
 }
 
-/** Factory for sun, moon, campfire, fill, and camera spotlight. */
 export function createSceneLights(scene) {
   return {
     sun: addDirectionalLight(scene, 0xfff4e0, 0, { x: -45, y: 70, z: 35 }),

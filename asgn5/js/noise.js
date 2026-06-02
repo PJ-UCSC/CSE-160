@@ -1,7 +1,3 @@
-/**
- * @file Shared procedural noise (`fbm`, `valueNoise`, `smoothstep`) for heightmaps and textures.
- */
-
 export function smoothstep(edge0, edge1, x) {
   const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
   return t * t * (3 - 2 * t);
@@ -12,7 +8,6 @@ function hash2(x, y) {
   return n - Math.floor(n);
 }
 
-/** Smooth value noise in 2D (bilinear interpolation of random corners). */
 export function valueNoise(x, y) {
   const ix = Math.floor(x);
   const iy = Math.floor(y);
@@ -27,7 +22,6 @@ export function valueNoise(x, y) {
   return a * (1 - ux) * (1 - uy) + b * ux * (1 - uy) + c * (1 - ux) * uy + d * ux * uy;
 }
 
-/** Fractional Brownian motion — layered noise for natural variation. */
 export function fbm(x, y, octaves = 5, lacunarity = 2) {
   let v = 0;
   let amp = 0.5;

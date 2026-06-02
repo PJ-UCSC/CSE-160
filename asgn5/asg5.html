@@ -151,6 +151,26 @@
             <summary class="panel-section-summary">Atmosphere</summary>
             <div class="panel-section-body">
               <div class="light-control">
+                <label class="light-toggle">
+                  <input type="checkbox" id="sky-enabled" checked />
+                  <span>Skybox <em>HDR</em></span>
+                </label>
+                <label class="light-slider">
+                  <span class="light-slider-label">Sky image</span>
+                  <select id="sky-select" class="sky-select"></select>
+                </label>
+              </div>
+              <div class="light-control">
+                <label class="light-toggle">
+                  <input type="checkbox" id="scatter-grass" checked />
+                  <span>Grass models</span>
+                </label>
+                <label class="light-toggle">
+                  <input type="checkbox" id="scatter-trees" checked />
+                  <span>Tree models</span>
+                </label>
+              </div>
+              <div class="light-control">
                 <label class="light-slider">
                   <span class="light-slider-label">Fog density</span>
                   <input type="range" id="fog-density" min="0" max="0.06" step="0.001" value="0.022" />
