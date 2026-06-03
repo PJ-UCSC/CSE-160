@@ -1,4 +1,5 @@
 # CSE 160 — Assignment 5 (Three.js campfire scene)
+AI was used in this assignment. The GLSL and the shaders file especially.
 
 ## Run
 
